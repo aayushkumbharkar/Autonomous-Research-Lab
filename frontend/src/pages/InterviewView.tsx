@@ -25,13 +25,98 @@ export default function InterviewView() {
   const [sendingMsg, setSendingMsg] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // STT / TTS state
+  const [isListening, setIsListening] = useState(false);
+  const [autoSpeak, setAutoSpeak] = useState(false);
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+
   useEffect(() => {
     api.listSessions().then(setSessions).catch(console.error);
+
+    // Initialize SpeechRecognition
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = 'en-US';
+
+      rec.onstart = () => {
+        setIsListening(true);
+      };
+      rec.onend = () => {
+        setIsListening(false);
+      };
+      rec.onerror = (e: any) => {
+        console.error("Speech recognition error:", e);
+        setIsListening(false);
+      };
+      rec.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          setMessage((prev) => prev ? prev + ' ' + transcript : transcript);
+        }
+      };
+      recognitionRef.current = rec;
+    }
+
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
   }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeSession?.messages]);
+
+  const speakText = (text: string, msgId: string) => {
+    if (!('speechSynthesis' in window)) {
+      alert("Text-to-speech is not supported in this browser.");
+      return;
+    }
+
+    if (speakingMsgId === msgId) {
+      window.speechSynthesis.cancel();
+      setSpeakingMsgId(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    if (!text) return;
+
+    // Remove any formatting or metadata lines from the speech utterance
+    const cleanText = text.replace(/TOPICS_(COVERED|REMAINING):.*/gi, '').trim();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.onend = () => {
+      setSpeakingMsgId(null);
+    };
+    utterance.onerror = () => {
+      setSpeakingMsgId(null);
+    };
+
+    setSpeakingMsgId(msgId);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      alert("Speech recognition is not supported in this browser. Please use Google Chrome, Microsoft Edge, or Apple Safari.");
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      try {
+        recognitionRef.current.start();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
 
   const startSession = async () => {
     if (!topic.trim()) return;
@@ -41,6 +126,11 @@ export default function InterviewView() {
       setActiveSession(session);
       setTopic('');
       setSessions((prev) => [{ ...session, message_count: 1 }, ...prev]);
+
+      if (autoSpeak && session.messages && session.messages.length > 0) {
+        const opening = session.messages[0];
+        speakText(opening.content, opening.id);
+      }
     } catch (e: any) {
       alert(e.message);
     } finally {
@@ -74,6 +164,10 @@ export default function InterviewView() {
           messages: [...msgs, { ...tempMsg, id: tempMsg.id.replace('temp-', '') }, response.message],
         };
       });
+
+      if (autoSpeak) {
+        speakText(response.message.content, response.message.id);
+      }
     } catch (e: any) {
       alert(e.message);
     } finally {
@@ -85,6 +179,10 @@ export default function InterviewView() {
     if (!activeSession) return;
     setLoading(true);
     try {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setSpeakingMsgId(null);
       const result = await api.endSession(activeSession.id);
       setActiveSession(result);
     } catch (e: any) {
@@ -96,6 +194,10 @@ export default function InterviewView() {
 
   const loadSession = async (id: string) => {
     try {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setSpeakingMsgId(null);
       const session = await api.getSession(id);
       setActiveSession(session);
     } catch (e: any) {
@@ -182,11 +284,28 @@ export default function InterviewView() {
                     {activeSession.status}
                   </div>
                 </div>
-                {activeSession.status === 'active' && (
-                  <button className="btn btn-secondary btn-sm" onClick={endSession}>
-                    End & Summarize
-                  </button>
-                )}
+                <div className="flex items-center gap-12">
+                  <label className="flex items-center gap-8 text-sm" style={{ cursor: 'pointer', userSelect: 'none' }}>
+                    <input
+                      type="checkbox"
+                      checked={autoSpeak}
+                      onChange={(e) => {
+                        setAutoSpeak(e.target.checked);
+                        if (!e.target.checked) {
+                          window.speechSynthesis.cancel();
+                          setSpeakingMsgId(null);
+                        }
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span>🔊 Auto-Speak</span>
+                  </label>
+                  {activeSession.status === 'active' && (
+                    <button className="btn btn-secondary btn-sm" onClick={endSession}>
+                      End & Summarize
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Messages */}
@@ -196,7 +315,34 @@ export default function InterviewView() {
                     <div className="message-avatar">
                       {msg.role === 'moderator' ? '🤖' : '👤'}
                     </div>
-                    <div className="message-bubble">{msg.content}</div>
+                    <div
+                      className="message-bubble"
+                      style={{
+                        position: 'relative',
+                        paddingRight: msg.role === 'moderator' ? '40px' : '16px',
+                      }}
+                    >
+                      {msg.content}
+                      {msg.role === 'moderator' && (
+                        <button
+                          onClick={() => speakText(msg.content, msg.id)}
+                          style={{
+                            position: 'absolute',
+                            right: '8px',
+                            top: '8px',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            opacity: speakingMsgId === msg.id ? 1 : 0.4,
+                            transition: 'opacity 0.2s',
+                          }}
+                          title={speakingMsgId === msg.id ? "Stop Speaking" : "Read Aloud"}
+                        >
+                          {speakingMsgId === msg.id ? '🛑' : '🔊'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
                 {sendingMsg && (
@@ -222,19 +368,40 @@ export default function InterviewView() {
 
               {/* Input */}
               {activeSession.status === 'active' && (
-                <div className="chat-input-area">
+                <div className="chat-input-area" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button
+                    className={`btn ${isListening ? 'btn-danger' : 'btn-secondary'}`}
+                    onClick={toggleListening}
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      padding: 0,
+                      borderRadius: 'var(--radius-md)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '16px',
+                      ...(isListening ? { animation: 'pulse 1.5s infinite' } : {}),
+                    }}
+                    title={isListening ? "Stop voice recognition" : "Speak (voice typing)"}
+                    type="button"
+                  >
+                    {isListening ? '🛑' : '🎙️'}
+                  </button>
                   <input
                     className="input"
-                    placeholder="Type your response..."
+                    placeholder={isListening ? "Listening... speak now..." : "Type your response..."}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                     disabled={sendingMsg}
+                    style={{ flex: 1 }}
                   />
                   <button
                     className="btn btn-primary"
                     onClick={sendMessage}
                     disabled={sendingMsg || !message.trim()}
+                    style={{ height: '42px' }}
                   >
                     Send
                   </button>
