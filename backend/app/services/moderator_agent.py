@@ -256,6 +256,24 @@ async def end_session(
     session.status = "completed"
     await db.flush()
 
+    # Automatically chunk and ingest the transcript into the database & ChromaDB
+    from app.services.ingestion import ingest_text
+    from app.services.retrieval import rebuild_bm25
+
+    filename = f"interview_session_{session.id}.txt"
+    metadata = {
+        "session_id": session.id,
+        "topic": session.topic,
+        "source": "interview",
+    }
+    try:
+        _, chunks = await ingest_text(db, transcript, filename, metadata)
+        if chunks:
+            rebuild_bm25()
+        logger.info("interview_auto_ingestion_success", session_id=session.id, chunk_count=len(chunks))
+    except Exception as e:
+        logger.error("interview_auto_ingestion_failed", session_id=session.id, error=str(e))
+
     messages = [
         MessageResponse(
             id=msg.id,
