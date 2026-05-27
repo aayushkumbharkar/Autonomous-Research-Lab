@@ -16,7 +16,7 @@ chromadb==0.5.7
 # AI / ML
 groq==0.11.0
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.2.0+cpu
+torch==2.9.0+cpu
 sentence-transformers==3.1.1
 
 # Search
