@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: research-lab-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    rootDir: backend
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: EMBEDDING_MODEL
+        value: all-MiniLM-L6-v2
+      - key: CHROMA_PERSIST_DIR
+        value: ./data/chroma
+      - key: SQLITE_URL
+        value: sqlite+aiosqlite:///./data/research_lab.db
+      - key: LOG_LEVEL
+        value: INFO
+      - key: EVAL_THRESHOLD
+        value: "0.7"
+      - key: MAX_RETRY_ATTEMPTS
+        value: "3"
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: WHISPER_MODEL
+        value: whisper-large-v3-turbo

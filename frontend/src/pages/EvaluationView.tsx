@@ -206,8 +206,7 @@ export default function EvaluationView() {
               </div>
 
               <div className="flex flex-col gap-16">
-                {comparison.attempts.map((attempt: any, idx: number) => {
-                  const isLast = idx === comparison.attempts.length - 1;
+                {comparison.attempts.map((attempt: any) => {
                   const isBest = attempt.attempt_number === comparison.best_attempt;
                   return (
                     <div

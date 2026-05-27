@@ -107,11 +107,41 @@ def chunk_text(
         if not content:
             continue
 
-        segments.append({
-            "content": content,
-            "speaker": current_speaker,
-            "timestamp": timestamp,
-        })
+        # Split line content into sentences
+        sentences = _split_sentences(content)
+        for sent in sentences:
+            # If the sentence itself exceeds chunk_size, split it into smaller word fragments
+            if len(sent) > chunk_size:
+                words = sent.split(' ')
+                current_frag = []
+                current_len = 0
+                for w in words:
+                    if not w:
+                        continue
+                    added_len = len(w) + (1 if current_len > 0 else 0)
+                    if current_len > 0 and current_len + added_len > chunk_size:
+                        segments.append({
+                            "content": ' '.join(current_frag),
+                            "speaker": current_speaker,
+                            "timestamp": timestamp,
+                        })
+                        current_frag = [w]
+                        current_len = len(w)
+                    else:
+                        current_frag.append(w)
+                        current_len += added_len
+                if current_frag:
+                    segments.append({
+                        "content": ' '.join(current_frag),
+                        "speaker": current_speaker,
+                        "timestamp": timestamp,
+                    })
+            else:
+                segments.append({
+                    "content": sent,
+                    "speaker": current_speaker,
+                    "timestamp": timestamp,
+                })
 
     # Now build chunks from segments using sentence-aware boundaries
     chunks: list[ChunkResult] = []
