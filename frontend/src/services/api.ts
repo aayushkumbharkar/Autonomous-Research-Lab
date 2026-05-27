@@ -1,15 +1,25 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    ...options,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || `Request failed: ${res.status}`);
+async function request<T>(path: string, options?: RequestInit, retries = 2): Promise<T> {
+  const url = `${API_BASE}${path}`;
+  try {
+    const res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json', ...options?.headers },
+      ...options,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Request failed: ${res.status}`);
+    }
+    return res.json();
+  } catch (e: any) {
+    // Retry on network failures (e.g. Render free tier cold start timeout)
+    if (retries > 0 && e.message === 'Failed to fetch') {
+      await new Promise((r) => setTimeout(r, 3000));
+      return request<T>(path, options, retries - 1);
+    }
+    throw e;
   }
-  return res.json();
 }
 
 // ─── Ingestion ───

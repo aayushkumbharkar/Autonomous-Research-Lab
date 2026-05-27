@@ -88,11 +88,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware
+# CORS middleware — allow all origins for cross-domain API access
+# allow_credentials is False because this API uses no cookies or session auth.
+# This avoids the browser rejecting wildcard origins with credentials.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "*"],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
