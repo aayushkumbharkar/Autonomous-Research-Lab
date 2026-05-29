@@ -30,6 +30,7 @@ export default function InterviewView() {
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
+  const initialMessageRef = useRef<string>('');
 
   useEffect(() => {
     api.listSessions().then(setSessions).catch(console.error);
@@ -53,10 +54,12 @@ export default function InterviewView() {
         setIsListening(false);
       };
       rec.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          setMessage((prev) => prev ? prev + ' ' + transcript : transcript);
+        let sessionTranscript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          sessionTranscript += event.results[i][0].transcript;
         }
+        const initial = initialMessageRef.current || '';
+        setMessage(initial ? `${initial.trim()} ${sessionTranscript.trim()}` : sessionTranscript.trim());
       };
       recognitionRef.current = rec;
     }
@@ -111,6 +114,7 @@ export default function InterviewView() {
       recognitionRef.current.stop();
     } else {
       try {
+        initialMessageRef.current = message;
         recognitionRef.current.start();
       } catch (e) {
         console.error(e);
@@ -246,16 +250,67 @@ export default function InterviewView() {
                     className="nav-link"
                     onClick={() => loadSession(s.id)}
                     style={{
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingRight: '32px',
                       ...(activeSession?.id === s.id
                         ? { background: 'rgba(99,102,241,0.15)', color: 'var(--accent-primary)' }
                         : {}),
                     }}
                   >
-                    <span className={`status-dot ${s.status}`}></span>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: 600 }}>{s.topic.slice(0, 40)}</div>
-                      <div className="text-sm text-muted">{s.message_count || 0} messages</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', overflow: 'hidden' }}>
+                      <span className={`status-dot ${s.status}`}></span>
+                      <div style={{ overflow: 'hidden' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{s.topic}</div>
+                        <div className="text-sm text-muted">{s.message_count || 0} messages</div>
+                      </div>
                     </div>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (confirm(`Are you sure you want to delete this session?`)) {
+                          try {
+                            await api.deleteSession(s.id);
+                            setSessions((prev) => prev.filter((session) => session.id !== s.id));
+                            if (activeSession?.id === s.id) {
+                              setActiveSession(null);
+                            }
+                          } catch (err: any) {
+                            alert(err.message);
+                          }
+                        }
+                      }}
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'color var(--transition-fast), background var(--transition-fast)',
+                      }}
+                      title="Delete Session"
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = 'var(--error)';
+                        e.currentTarget.style.background = 'var(--error-bg)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = 'var(--text-muted)';
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      🗑️
+                    </button>
                   </div>
                 ))}
               </div>

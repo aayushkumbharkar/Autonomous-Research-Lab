@@ -118,3 +118,22 @@ async def get_session(
         messages=messages,
         created_at=session.created_at,
     )
+
+
+@router.delete("/sessions/{session_id}")
+async def delete_session(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an interview session and its messages."""
+    stmt = select(InterviewSession).where(InterviewSession.id == session_id)
+    result = await db.execute(stmt)
+    session = result.scalar_one_or_none()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    await db.delete(session)
+    await db.commit()
+    return {"status": "success", "message": f"Session {session_id} deleted"}
+

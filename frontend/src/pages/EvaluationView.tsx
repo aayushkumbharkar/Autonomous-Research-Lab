@@ -112,6 +112,9 @@ export default function EvaluationView() {
                     <th style={{ textAlign: 'right', padding: '8px 12px', color: 'var(--text-secondary)' }}>
                       Date
                     </th>
+                    <th style={{ textAlign: 'right', padding: '8px 12px', color: 'var(--text-secondary)' }}>
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -146,6 +149,42 @@ export default function EvaluationView() {
                           }}
                         >
                           {new Date(run.created_at).toLocaleDateString()}
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '10px 12px' }}>
+                          <button
+                            onClick={async () => {
+                              if (confirm('Are you sure you want to delete this evaluation run?')) {
+                                try {
+                                  await api.deleteEvalRun(run.id);
+                                  setEvalRuns((prev) => prev.filter((r) => r.id !== run.id));
+                                  api.coverage().then(setCoverage).catch(() => {});
+                                } catch (err: any) {
+                                  alert(err.message);
+                                }
+                              }
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--text-muted)',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              transition: 'color var(--transition-fast), background var(--transition-fast)',
+                            }}
+                            title="Delete Evaluation Run"
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = 'var(--error)';
+                              e.currentTarget.style.background = 'var(--error-bg)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = 'var(--text-muted)';
+                              e.currentTarget.style.background = 'transparent';
+                            }}
+                          >
+                            🗑️
+                          </button>
                         </td>
                       </tr>
                     );

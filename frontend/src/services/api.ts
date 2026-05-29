@@ -1,4 +1,16 @@
-const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
+const getApiBase = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace(/\/+$/, '');
+  }
+  const isLocal =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '[::1]');
+  return isLocal ? '/api' : 'https://research-lab-backend.onrender.com/api';
+};
+
+const API_BASE = getApiBase();
 
 /**
  * Track whether the backend has responded at least once this session.
@@ -109,6 +121,8 @@ export const api = {
     request<any>(`/interview/sessions/${sessionId}/end`, { method: 'POST' }),
   listSessions: () => request<any[]>('/interview/sessions'),
   getSession: (id: string) => request<any>(`/interview/sessions/${id}`),
+  deleteSession: (id: string) =>
+    request<any>(`/interview/sessions/${id}`, { method: 'DELETE' }),
 
   // Evaluation
   evaluate: (answerId: string) =>
@@ -119,6 +133,8 @@ export const api = {
   listEvalRuns: () => request<any[]>('/evaluation/runs'),
   getRetryComparison: (queryId: string) =>
     request<any>(`/evaluation/retry-comparison/${queryId}`),
+  deleteEvalRun: (id: string) =>
+    request<any>(`/evaluation/runs/${id}`, { method: 'DELETE' }),
 
   // Tools
   listTools: () => request<any>('/tools'),

@@ -232,3 +232,22 @@ async def get_retry_comparison(
         best_attempt=best_attempt["attempt_number"],
         total_improvement=round(total_improvement, 3),
     )
+
+
+@router.delete("/runs/{eval_id}")
+async def delete_eval_run(
+    eval_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an evaluation run."""
+    stmt = select(EvalRun).where(EvalRun.id == eval_id)
+    result = await db.execute(stmt)
+    run = result.scalar_one_or_none()
+
+    if not run:
+        raise HTTPException(status_code=404, detail="Evaluation run not found")
+
+    await db.delete(run)
+    await db.commit()
+    return {"status": "success", "message": f"Evaluation run {eval_id} deleted"}
+
