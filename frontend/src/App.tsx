@@ -1,9 +1,46 @@
 import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
 import InterviewView from './pages/InterviewView';
 import ResearchView from './pages/ResearchView';
 import EvaluationView from './pages/EvaluationView';
+import { api } from './services/api';
+
+type ConnectionStatus = 'connecting' | 'online' | 'offline';
 
 function App() {
+  const [status, setStatus] = useState<ConnectionStatus>('connecting');
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const checkHealth = async () => {
+    try {
+      await api.health();
+      setStatus('online');
+    } catch {
+      setStatus((prev) => (prev === 'online' ? 'offline' : prev));
+    }
+  };
+
+  useEffect(() => {
+    checkHealth();
+    // Re-check every 60 seconds to detect backend going down or waking up
+    intervalRef.current = setInterval(checkHealth, 60_000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  const statusLabel: Record<ConnectionStatus, string> = {
+    connecting: 'Connecting to server…',
+    online: 'System Online',
+    offline: 'Server Unreachable',
+  };
+
+  const statusDotClass: Record<ConnectionStatus, string> = {
+    connecting: 'connecting',
+    online: 'active',
+    offline: 'completed',
+  };
+
   return (
     <BrowserRouter>
       <div className="app-layout">
@@ -50,9 +87,14 @@ function App() {
           <div style={{ marginTop: 'auto', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
             <div className="text-sm text-muted" style={{ padding: '0 12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="status-dot active"></span>
-                System Online
+                <span className={`status-dot ${statusDotClass[status]}`}></span>
+                {statusLabel[status]}
               </div>
+              {status === 'connecting' && (
+                <div style={{ fontSize: '11px', opacity: 0.6, marginTop: '4px', paddingLeft: '18px' }}>
+                  Free-tier servers may take up to 60s to wake up.
+                </div>
+              )}
             </div>
           </div>
         </aside>
@@ -72,3 +114,4 @@ function App() {
 }
 
 export default App;
+

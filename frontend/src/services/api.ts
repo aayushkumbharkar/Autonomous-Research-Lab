@@ -1,6 +1,27 @@
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
+const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
 
-async function request<T>(path: string, options?: RequestInit, retries = 2): Promise<T> {
+/**
+ * Track whether the backend has responded at least once this session.
+ * Used to decide whether to show cold-start messaging to the user.
+ */
+export let backendWarm = false;
+
+/**
+ * Fire-and-forget warmup ping on module load.
+ * Wakes the Render free-tier backend so the first real request is faster.
+ */
+(function warmup() {
+  fetch(`${API_BASE}/health`, { method: 'GET' })
+    .then(() => { backendWarm = true; })
+    .catch(() => { /* ignore — real requests will retry */ });
+})();
+
+async function request<T>(
+  path: string,
+  options?: RequestInit,
+  retries = 5,
+  attempt = 1,
+): Promise<T> {
   const url = `${API_BASE}${path}`;
   try {
     const res = await fetch(url, {
@@ -11,12 +32,27 @@ async function request<T>(path: string, options?: RequestInit, retries = 2): Pro
       const err = await res.json().catch(() => ({ detail: res.statusText }));
       throw new Error(err.detail || `Request failed: ${res.status}`);
     }
+    backendWarm = true;
     return res.json();
   } catch (e: any) {
-    // Retry on network failures (e.g. Render free tier cold start timeout)
-    if (retries > 0 && e.message === 'Failed to fetch') {
-      await new Promise((r) => setTimeout(r, 3000));
-      return request<T>(path, options, retries - 1);
+    const isNetworkError =
+      e.message === 'Failed to fetch' ||
+      e.message === 'NetworkError when attempting to reach resource.' ||
+      e.message === 'Load failed' ||
+      e.name === 'TypeError';
+
+    // Retry with exponential backoff for network failures (covers Render cold starts)
+    if (retries > 0 && isNetworkError) {
+      const delay = Math.min(3000 * Math.pow(1.5, attempt - 1), 15000);
+      await new Promise((r) => setTimeout(r, delay));
+      return request<T>(path, options, retries - 1, attempt + 1);
+    }
+
+    // Replace the cryptic "Failed to fetch" with a clear message
+    if (isNetworkError) {
+      throw new Error(
+        'Unable to reach the server. The backend may be starting up (this can take up to 60 seconds on the free tier). Please try again in a moment.'
+      );
     }
     throw e;
   }
