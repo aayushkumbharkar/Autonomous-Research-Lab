@@ -17,6 +17,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from app.utils.rate_limiter import RateLimitMiddleware
 
 # Ensure data directory exists
 data_dir = Path("./data")
@@ -98,6 +99,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Custom Rate Limiting & Throttling middleware
+app.add_middleware(RateLimitMiddleware)
 
 
 # Request timing middleware

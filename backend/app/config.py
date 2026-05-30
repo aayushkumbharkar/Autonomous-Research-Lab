@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     # --- Server ---
     frontend_url: str = Field("http://localhost:5173", description="Frontend URL for CORS")
     log_level: str = Field("INFO", description="Logging level")
+    rate_limit_enabled: bool = Field(True, description="Enable API rate limiting")
+    rate_limit_requests_per_minute: int = Field(30, description="Max API requests per minute per IP")
+    rate_limit_burst: int = Field(10, description="Max burst capacity of tokens per IP")
+    throttle_threshold_ratio: float = Field(0.7, description="Slow down requests if token usage exceeds this ratio")
+    throttle_delay_seconds: float = Field(1.5, description="Delay duration in seconds during throttling")
 
     model_config = {
         "env_file": ".env",
