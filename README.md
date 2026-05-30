@@ -1,3 +1,12 @@
+---
+title: Autonomous Research Lab Backend
+emoji: 🌖
+colorFrom: red
+colorTo: purple
+sdk: docker
+pinned: false
+---
+
 # Autonomous Research Lab
 
 A closed-loop AI research platform built for systematic data ingestion, hybrid retrieval, granular claim verification, and continuous self-improvement.
