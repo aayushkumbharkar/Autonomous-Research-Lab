@@ -71,17 +71,43 @@ def _retrieval_overlap(answer_text: str, context_chunks: list[str]) -> tuple[flo
     overlap = answer_tokens & context_tokens
     ratio = len(overlap) / len(answer_tokens)
 
-    return round(ratio, 3), f"{len(overlap)}/{len(answer_tokens)} answer tokens found in context"
+    return round# ─── LLM-as-Judge Scoring ─────────────────────────────────────────────────
 
+_UNIFIED_EVAL_PROMPT_TEMPLATE = """You are a strict evaluator for AI-generated research answers.
 
-# ─── LLM-as-Judge Scoring ─────────────────────────────────────────────────
+Evaluate the answer on the following four dimensions using the specified rubrics:
 
-_EVAL_PROMPT_TEMPLATE = """You are a strict evaluator for AI-generated research answers.
+1. FAITHFULNESS
+Every factual claim in the answer must be directly supported by the provided context chunks.
+- 1.0: Every claim is directly stated in or clearly inferable from the context.
+- 0.7: Most claims are supported, minor inferences are reasonable.
+- 0.4: Some claims lack support, or answer includes information not in context.
+- 0.1: Answer contains significant unsupported claims or contradicts context.
+- 0.0: Answer is entirely fabricated or unrelated to context.
 
-Score the following answer on the dimension: {dimension}
+2. COVERAGE
+The answer should address all aspects of the query using the available context.
+- 1.0: All aspects of the query are thoroughly addressed.
+- 0.7: Most aspects addressed, minor gaps.
+- 0.4: Key aspects missing or superficially addressed.
+- 0.1: Answer barely addresses the query.
+- 0.0: Answer does not address the query at all.
 
-SCORING RUBRIC for {dimension}:
-{rubric}
+3. SPECIFICITY
+The answer should contain specific details, not vague generalities.
+- 1.0: Rich in specific details, data points, names, or examples from context.
+- 0.7: Good specificity with some concrete details.
+- 0.4: Mix of specific and vague statements.
+- 0.1: Mostly vague or generic statements.
+- 0.0: Entirely vague with no concrete details.
+
+4. RETRIEVAL QUALITY
+The retrieved context chunks should be relevant to the query.
+- 1.0: All chunks are highly relevant to the query.
+- 0.7: Most chunks are relevant, some tangential.
+- 0.4: Mixed relevance, significant noise.
+- 0.1: Mostly irrelevant chunks.
+- 0.0: Context chunks are entirely unrelated to query.
 
 CONTEXT CHUNKS:
 {context}
@@ -90,86 +116,72 @@ QUERY: {query}
 
 ANSWER: {answer}
 
-Respond ONLY with valid JSON:
-{{"score": <float 0.0 to 1.0>, "explanation": "<specific evidence-based explanation>"}}"""
+Respond ONLY with a valid JSON object formatted exactly as follows:
+{{
+  "faithfulness": {{"score": <float 0.0 to 1.0>, "explanation": "<specific evidence-based explanation>"}},
+  "coverage": {{"score": <float 0.0 to 1.0>, "explanation": "<specific evidence-based explanation>"}},
+  "specificity": {{"score": <float 0.0 to 1.0>, "explanation": "<specific evidence-based explanation>"}},
+  "retrieval_quality": {{"score": <float 0.0 to 1.0>, "explanation": "<specific evidence-based explanation>"}}
+}}"""
 
 
-_RUBRICS = {
-    "faithfulness": """
-Every factual claim in the answer must be directly supported by the provided context chunks.
-- 1.0: Every claim is directly stated in or clearly inferable from the context
-- 0.7: Most claims are supported, minor inferences are reasonable
-- 0.4: Some claims lack support, or answer includes information not in context
-- 0.1: Answer contains significant unsupported claims or contradicts context
-- 0.0: Answer is entirely fabricated or unrelated to context""",
-
-    "coverage": """
-The answer should address all aspects of the query using the available context.
-- 1.0: All aspects of the query are thoroughly addressed
-- 0.7: Most aspects addressed, minor gaps
-- 0.4: Key aspects missing or superficially addressed
-- 0.1: Answer barely addresses the query
-- 0.0: Answer does not address the query at all""",
-
-    "specificity": """
-The answer should contain specific details, not vague generalities.
-- 1.0: Rich in specific details, data points, names, or examples from context
-- 0.7: Good specificity with some concrete details
-- 0.4: Mix of specific and vague statements
-- 0.1: Mostly vague or generic statements
-- 0.0: Entirely vague with no concrete details""",
-
-    "retrieval_quality": """
-The retrieved context chunks should be relevant to the query.
-- 1.0: All chunks are highly relevant to the query
-- 0.7: Most chunks are relevant, some tangential
-- 0.4: Mixed relevance, significant noise
-- 0.1: Mostly irrelevant chunks
-- 0.0: Context chunks are entirely unrelated to query""",
-}
-
-
-async def _llm_score(
-    dimension: str,
+async def _run_unified_llm_eval(
     answer: str,
     context: str,
     query: str,
-) -> tuple[float, str]:
-    """Score a single dimension using LLM-as-judge."""
+) -> dict[str, tuple[float, str]]:
+    """
+    Evaluate all 4 dimensions in a single LLM call.
+    Returns a dict mapping dimension name to (score, explanation).
+    """
     settings = get_settings()
     client = Groq(api_key=settings.groq_api_key)
 
-    prompt = _EVAL_PROMPT_TEMPLATE.format(
-        dimension=dimension,
-        rubric=_RUBRICS[dimension],
+    prompt = _UNIFIED_EVAL_PROMPT_TEMPLATE.format(
         context=context[:4000],  # Truncate to avoid token limits
         query=query,
         answer=answer,
     )
 
+    default_results = {
+        "faithfulness": (0.5, "LLM evaluation failed or timed out"),
+        "coverage": (0.5, "LLM evaluation failed or timed out"),
+        "specificity": (0.5, "LLM evaluation failed or timed out"),
+        "retrieval_quality": (0.5, "LLM evaluation failed or timed out"),
+    }
+
     try:
         response = client.chat.completions.create(
-            model=settings.groq_model,
+            model=settings.groq_fast_model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,  # Low temperature for consistent scoring
-            max_tokens=256,
+            max_tokens=1000,
         )
 
         content = response.choices[0].message.content or ""
 
         # Parse JSON response
-        json_match = re.search(r'\{[^}]+\}', content)
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
         if json_match:
-            result = json.loads(json_match.group())
-            score = max(0.0, min(1.0, float(result.get("score", 0.0))))
-            explanation = result.get("explanation", "No explanation provided")
-            return score, explanation
+            data = json.loads(json_match.group())
+            results = {}
+            for dim in ["faithfulness", "coverage", "specificity", "retrieval_quality"]:
+                dim_data = data.get(dim, {})
+                # Safely parse scores
+                try:
+                    score = max(0.0, min(1.0, float(dim_data.get("score", 0.5))))
+                except (ValueError, TypeError):
+                    score = 0.5
+                explanation = dim_data.get("explanation", "No explanation provided")
+                results[dim] = (score, explanation)
+            return results
 
-        return 0.5, f"Could not parse LLM response: {content[:100]}"
+        logger.warning("unified_eval_parse_failed", content=content[:100])
+        return default_results
 
     except Exception as e:
-        logger.error("llm_eval_failed", dimension=dimension, error=str(e))
-        return 0.5, f"LLM evaluation failed: {str(e)}"
+        logger.error("unified_eval_failed", error=str(e))
+        return default_results
 
 
 # ─── Main Evaluation Function ─────────────────────────────────────────────
@@ -204,13 +216,14 @@ async def evaluate_answer(
     cit_coverage, cit_explanation = _citation_coverage(answer_text)
     ret_overlap, ret_explanation = _retrieval_overlap(answer_text, context_chunks)
 
-    # 2. LLM-as-judge signals (run all 4 dimensions)
+    # 2. LLM-as-judge signals (run all 4 dimensions in a single call)
     context_str = "\n\n---\n\n".join(context_chunks)
+    eval_results = await _run_unified_llm_eval(answer_text, context_str, query)
 
-    faith_score, faith_expl = await _llm_score("faithfulness", answer_text, context_str, query)
-    cover_score, cover_expl = await _llm_score("coverage", answer_text, context_str, query)
-    spec_score, spec_expl = await _llm_score("specificity", answer_text, context_str, query)
-    retq_score, retq_expl = await _llm_score("retrieval_quality", answer_text, context_str, query)
+    faith_score, faith_expl = eval_results["faithfulness"]
+    cover_score, cover_expl = eval_results["coverage"]
+    spec_score, spec_expl = eval_results["specificity"]
+    retq_score, retq_expl = eval_results["retrieval_quality"]
 
     # 3. Apply claim verification penalty to faithfulness
     # If claims are unsupported, HARD penalize faithfulness

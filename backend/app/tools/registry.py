@@ -143,7 +143,7 @@ Respond with ONLY valid JSON:
         try:
             client = Groq(api_key=settings.groq_api_key)
             response = client.chat.completions.create(
-                model=settings.groq_model,
+                model=settings.groq_fast_model,
                 messages=[{"role": "user", "content": selection_prompt}],
                 temperature=0.1,
                 max_tokens=256,

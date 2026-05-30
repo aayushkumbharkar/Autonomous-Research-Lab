@@ -137,7 +137,7 @@ async def generate_alternative_answer(
 
     try:
         response = client.chat.completions.create(
-            model=settings.groq_model,
+            model=settings.groq_fast_model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Context:\n{context}\n\nQuery: {query}"},

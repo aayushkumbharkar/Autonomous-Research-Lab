@@ -53,7 +53,7 @@ class SummarizeTool(BaseTool):
             settings = get_settings()
             client = Groq(api_key=settings.groq_api_key)
             response = client.chat.completions.create(
-                model=settings.groq_model,
+                model=settings.groq_fast_model,
                 messages=[
                     {"role": "system", "content": "You are a precise summarizer. Summarize ONLY based on the provided content. Do not add information."},
                     {"role": "user", "content": f"Summarize the following content about '{query}':\n\n{context}"},

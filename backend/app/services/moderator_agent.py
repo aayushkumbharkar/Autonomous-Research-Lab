@@ -77,7 +77,7 @@ async def start_session(
     # Generate opening question
     client = Groq(api_key=settings.groq_api_key)
     response = client.chat.completions.create(
-        model=settings.groq_model,
+        model=settings.groq_fast_model,
         messages=[
             {"role": "system", "content": MODERATOR_SYSTEM_PROMPT},
             {"role": "user", "content": f"Begin an interview about: {topic}\n\nAsk your opening question."},
@@ -186,7 +186,7 @@ async def send_message(
     # Generate follow-up
     client = Groq(api_key=settings.groq_api_key)
     response = client.chat.completions.create(
-        model=settings.groq_model,
+        model=settings.groq_fast_model,
         messages=chat_history,
         temperature=0.7,
         max_tokens=512,
@@ -244,7 +244,7 @@ async def end_session(
     # Generate summary
     client = Groq(api_key=settings.groq_api_key)
     response = client.chat.completions.create(
-        model=settings.groq_model,
+        model=settings.groq_fast_model,
         messages=[
             {"role": "user", "content": SUMMARY_PROMPT.format(transcript=transcript)},
         ],

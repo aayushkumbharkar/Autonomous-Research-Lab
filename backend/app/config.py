@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     # --- Model Configuration ---
     groq_model: str = Field("llama-3.3-70b-versatile", description="Groq LLM model ID")
+    groq_fast_model: str = Field("llama-3.1-8b-instant", description="Groq fast/cheap LLM model ID")
     whisper_model: str = Field("whisper-large-v3-turbo", description="Groq Whisper model ID")
     embedding_model: str = Field("all-MiniLM-L6-v2", description="Sentence-transformers model")
 
