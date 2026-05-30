@@ -70,8 +70,10 @@ def _retrieval_overlap(answer_text: str, context_chunks: list[str]) -> tuple[flo
 
     overlap = answer_tokens & context_tokens
     ratio = len(overlap) / len(answer_tokens)
+    return round(ratio, 3), f"{len(overlap)}/{len(answer_tokens)} answer tokens found in context"
 
-    return round# ─── LLM-as-Judge Scoring ─────────────────────────────────────────────────
+
+# ─── LLM-as-Judge Scoring ─────────────────────────────────────────────────
 
 _UNIFIED_EVAL_PROMPT_TEMPLATE = """You are a strict evaluator for AI-generated research answers.
 
