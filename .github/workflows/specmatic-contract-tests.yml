@@ -37,6 +37,15 @@ jobs:
       - name: Run Specmatic contract tests
         run: bash run_contract_tests.sh
 
+      - name: Print contract test report
+        if: always()
+        run: |
+          if [ -f contract_test_results.json ]; then
+            cat contract_test_results.json
+          else
+            echo "contract_test_results.json not found"
+          fi
+
       - name: Upload contract test report
         if: always()
         uses: actions/upload-artifact@v4

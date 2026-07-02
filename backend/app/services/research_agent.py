@@ -121,18 +121,22 @@ async def research_query(
     # 3. Generate answer
     context_prompt = _build_context_prompt(context_chunks)
 
-    client = Groq(api_key=settings.groq_api_key)
-    response = client.chat.completions.create(
-        model=settings.groq_model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Context Chunks:\n{context_prompt}\n\nResearch Question: {query_text}"},
-        ],
-        temperature=0.3,
-        max_tokens=4096,
-    )
+    try:
+        client = Groq(api_key=settings.groq_api_key)
+        response = client.chat.completions.create(
+            model=settings.groq_model,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": f"Context Chunks:\n{context_prompt}\n\nResearch Question: {query_text}"},
+            ],
+            temperature=0.3,
+            max_tokens=4096,
+        )
+        answer_text = response.choices[0].message.content or ""
+    except Exception as e:
+        logger.error("groq_generation_failed", error=str(e))
+        answer_text = f"Based on the available context, I cannot fully answer this question because the LLM generation service is currently unavailable or misconfigured (error: {str(e)[:100]})."
 
-    answer_text = response.choices[0].message.content or ""
     reasoning_trace = f"Retrieved {len(context_chunks)} chunks via hybrid search. " \
                       f"Search metadata: {search_metadata}"
 

@@ -75,18 +75,21 @@ async def start_session(
     await db.flush()
 
     # Generate opening question
-    client = Groq(api_key=settings.groq_api_key)
-    response = client.chat.completions.create(
-        model=settings.groq_fast_model,
-        messages=[
-            {"role": "system", "content": MODERATOR_SYSTEM_PROMPT},
-            {"role": "user", "content": f"Begin an interview about: {topic}\n\nAsk your opening question."},
-        ],
-        temperature=0.7,
-        max_tokens=512,
-    )
-
-    opening_text = response.choices[0].message.content or "Tell me about your experience with this topic."
+    try:
+        client = Groq(api_key=settings.groq_api_key)
+        response = client.chat.completions.create(
+            model=settings.groq_fast_model,
+            messages=[
+                {"role": "system", "content": MODERATOR_SYSTEM_PROMPT},
+                {"role": "user", "content": f"Begin an interview about: {topic}\n\nAsk your opening question."},
+            ],
+            temperature=0.7,
+            max_tokens=512,
+        )
+        opening_text = response.choices[0].message.content or "Tell me about your experience with this topic."
+    except Exception as e:
+        logger.error("groq_generation_failed_during_start_session", error=str(e))
+        opening_text = f"Welcome! Let's begin the interview about: {topic}. Can you tell me your general thoughts or experience regarding this?"
 
     # Parse topics if present
     clean_text, _, _ = _parse_topics(opening_text)
@@ -184,15 +187,19 @@ async def send_message(
         chat_history = [chat_history[0]] + chat_history[-20:]
 
     # Generate follow-up
-    client = Groq(api_key=settings.groq_api_key)
-    response = client.chat.completions.create(
-        model=settings.groq_fast_model,
-        messages=chat_history,
-        temperature=0.7,
-        max_tokens=512,
-    )
+    try:
+        client = Groq(api_key=settings.groq_api_key)
+        response = client.chat.completions.create(
+            model=settings.groq_fast_model,
+            messages=chat_history,
+            temperature=0.7,
+            max_tokens=512,
+        )
+        followup_text = response.choices[0].message.content or ""
+    except Exception as e:
+        logger.error("groq_generation_failed_during_send_message", error=str(e))
+        followup_text = f"Thank you for sharing that. Can you elaborate further on that point or share another example? (LLM connection unavailable)"
 
-    followup_text = response.choices[0].message.content or ""
     clean_text, covered, remaining = _parse_topics(followup_text)
 
     # Save moderator response
@@ -242,17 +249,20 @@ async def end_session(
     transcript = "\n\n".join(transcript_lines)
 
     # Generate summary
-    client = Groq(api_key=settings.groq_api_key)
-    response = client.chat.completions.create(
-        model=settings.groq_fast_model,
-        messages=[
-            {"role": "user", "content": SUMMARY_PROMPT.format(transcript=transcript)},
-        ],
-        temperature=0.3,
-        max_tokens=1024,
-    )
-
-    session.summary = response.choices[0].message.content or ""
+    try:
+        client = Groq(api_key=settings.groq_api_key)
+        response = client.chat.completions.create(
+            model=settings.groq_fast_model,
+            messages=[
+                {"role": "user", "content": SUMMARY_PROMPT.format(transcript=transcript)},
+            ],
+            temperature=0.3,
+            max_tokens=1024,
+        )
+        session.summary = response.choices[0].message.content or ""
+    except Exception as e:
+        logger.error("groq_generation_failed_during_end_session", error=str(e))
+        session.summary = f"Summary could not be generated automatically because the LLM service is currently offline or misconfigured."
     session.status = "completed"
     await db.flush()
 
