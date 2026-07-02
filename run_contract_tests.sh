@@ -73,6 +73,7 @@ echo ""
 
 # Run Specmatic test command against the live backend
 # --host and --port point to the running Veritas instance
+set +e
 docker run \
     --name "${TEST_CONTAINER_NAME}" \
     --network host \
@@ -84,6 +85,7 @@ docker run \
     2>&1 | tee /tmp/specmatic_output.txt
 
 TEST_EXIT_CODE=${PIPESTATUS[0]}
+set -e
 
 # ── Capture results ───────────────────────────────────────────────────────
 

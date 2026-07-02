@@ -22,6 +22,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r backend/requirements.txt
 
+      - name: Create backend environment file
+        run: |
+          cp backend/.env.example backend/.env
+          echo "PORT=8000" >> backend/.env
+
       - name: Start Veritas backend
         run: docker compose up -d --build
 
