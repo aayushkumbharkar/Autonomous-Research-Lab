@@ -85,11 +85,11 @@ docker run \
     --name "${TEST_CONTAINER_NAME}" \
     --network host \
     "${LICENSE_ENV[@]}" \
-    -v "${CONTRACT_FILE}:/usr/src/app/specmatic.yaml:ro" \
+    -v "${CONTRACT_FILE}:/usr/src/app/openapi.yaml:ro" \
     specmatic/specmatic test \
     --host "localhost" \
     --port 8000 \
-    "/usr/src/app/specmatic.yaml" \
+    "/usr/src/app/openapi.yaml" \
     2>&1 | tee /tmp/specmatic_output.txt
 
 TEST_EXIT_CODE=${PIPESTATUS[0]}

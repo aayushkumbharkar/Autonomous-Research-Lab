@@ -136,10 +136,10 @@ docker run -d \
     --name "${STUB_CONTAINER_NAME}" \
     -p "${STUB_PORT}:${STUB_PORT}" \
     "${LICENSE_ENV[@]}" \
-    -v "${CONTRACT_FILE}:/usr/src/app/specmatic.yaml:ro" \
+    -v "${CONTRACT_FILE}:/usr/src/app/openapi.yaml:ro" \
     specmatic/specmatic stub \
     --port "${STUB_PORT}" \
-    "/usr/src/app/specmatic.yaml" \
+    "/usr/src/app/openapi.yaml" \
     2>&1
 
 info "Waiting for stub server to be ready..."
