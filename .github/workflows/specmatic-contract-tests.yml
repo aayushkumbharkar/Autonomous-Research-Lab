@@ -26,6 +26,7 @@ jobs:
         run: |
           cp backend/.env.example backend/.env
           echo "PORT=8000" >> backend/.env
+          echo "RATE_LIMIT_ENABLED=false" >> backend/.env
 
       - name: Start Veritas backend
         run: docker compose up -d --build
