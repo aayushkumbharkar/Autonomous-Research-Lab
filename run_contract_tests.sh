@@ -73,10 +73,18 @@ echo ""
 
 # Run Specmatic test command against the live backend
 # --host and --port point to the running Veritas instance
+LICENSE_FILE="${SCRIPT_DIR}/license.txt"
+LICENSE_ENV=()
+if [ -f "${LICENSE_FILE}" ]; then
+    export SPECMATIC_LICENSE_CONTENT="$(cat "${LICENSE_FILE}")"
+    LICENSE_ENV=(-e SPECMATIC_LICENSE_CONTENT)
+fi
+
 set +e
 docker run \
     --name "${TEST_CONTAINER_NAME}" \
     --network host \
+    "${LICENSE_ENV[@]}" \
     -v "${CONTRACT_FILE}:/usr/src/app/specmatic.yaml:ro" \
     specmatic/specmatic test \
     --host "localhost" \

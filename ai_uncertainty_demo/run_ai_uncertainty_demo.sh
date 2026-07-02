@@ -125,9 +125,17 @@ docker stop "${STUB_CONTAINER_NAME}" 2>/dev/null || true
 docker rm "${STUB_CONTAINER_NAME}" 2>/dev/null || true
 
 # Start Specmatic stub server
+LICENSE_FILE="${PROJECT_ROOT}/license.txt"
+LICENSE_ENV=()
+if [ -f "${LICENSE_FILE}" ]; then
+    export SPECMATIC_LICENSE_CONTENT="$(cat "${LICENSE_FILE}")"
+    LICENSE_ENV=(-e SPECMATIC_LICENSE_CONTENT)
+fi
+
 docker run -d \
     --name "${STUB_CONTAINER_NAME}" \
     -p "${STUB_PORT}:${STUB_PORT}" \
+    "${LICENSE_ENV[@]}" \
     -v "${CONTRACT_FILE}:/usr/src/app/specmatic.yaml:ro" \
     specmatic/specmatic stub \
     --port "${STUB_PORT}" \
