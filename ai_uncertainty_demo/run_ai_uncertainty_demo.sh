@@ -128,7 +128,7 @@ docker rm "${STUB_CONTAINER_NAME}" 2>/dev/null || true
 LICENSE_FILE="${PROJECT_ROOT}/license.txt"
 LICENSE_ENV=()
 if [ -f "${LICENSE_FILE}" ]; then
-    export SPECMATIC_LICENSE_CONTENT="$(cat "${LICENSE_FILE}")"
+    export SPECMATIC_LICENSE_CONTENT="$(tr -d '\r' < "${LICENSE_FILE}")"
     LICENSE_ENV=(-e SPECMATIC_LICENSE_CONTENT)
 fi
 
