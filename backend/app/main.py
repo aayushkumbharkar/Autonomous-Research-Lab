@@ -134,6 +134,13 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+# Simple health check for CI/CD readiness probes
+@app.get("/health")
+async def health_simple():
+    """Simple health check for CI/CD readiness probes."""
+    return {"status": "ok"}
+
+
 # Health check
 @app.get("/api/health")
 async def health_check():
