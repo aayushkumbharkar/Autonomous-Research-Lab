@@ -24,6 +24,7 @@ class AutoSelectRequest(BaseModel):
 
 
 @router.get("")
+@router.get("/")
 async def list_tools():
     """List all available MCP tools."""
     registry = get_registry()
