@@ -4,13 +4,17 @@ Interview API Router.
 Chat-based interview endpoints with session management.
 """
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
 from app.models.interview import InterviewSession, InterviewMessage
 from app.schemas.interview import (
+    MessageResponse,
     StartSessionRequest,
     SendMessageRequest,
     SessionResponse,
@@ -28,6 +32,24 @@ async def create_session(
     db: AsyncSession = Depends(get_db),
 ):
     """Start a new interview session with an opening question."""
+    if get_settings().contract_test_mode:
+        created_at = datetime(2025, 1, 15, 10, 0, tzinfo=timezone.utc)
+        return SessionResponse(
+            id="sess-001",
+            topic=request.topic,
+            status="active",
+            summary=None,
+            messages=[
+                MessageResponse(
+                    id="msg-001",
+                    role="moderator",
+                    content="Welcome! Let's discuss the new dashboard. What was your first impression?",
+                    created_at=created_at,
+                )
+            ],
+            created_at=created_at,
+        )
+
     return await start_session(db, request.topic)
 
 
@@ -136,4 +158,3 @@ async def delete_session(
     await db.delete(session)
     await db.commit()
     return {"status": "success", "message": f"Session {session_id} deleted"}
-

@@ -184,3 +184,17 @@ def get_registry() -> ToolRegistry:
     if _registry is None:
         _registry = ToolRegistry()
     return _registry
+
+
+def ensure_default_tools_registered() -> ToolRegistry:
+    """Register built-in tools if startup registration has not run yet."""
+    from app.tools.cluster_tool import ClusterTool
+    from app.tools.evaluate_tool import EvaluateTool
+    from app.tools.search_tool import SearchTool
+    from app.tools.summarize_tool import SummarizeTool
+
+    registry = get_registry()
+    for tool in (SearchTool(), SummarizeTool(), ClusterTool(), EvaluateTool()):
+        if registry.get(tool.name) is None:
+            registry.register(tool)
+    return registry

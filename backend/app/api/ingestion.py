@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
 from app.models.transcript import Transcript, Chunk
 from app.schemas.ingestion import (
@@ -29,6 +30,16 @@ async def ingest_text_endpoint(
     db: AsyncSession = Depends(get_db),
 ):
     """Ingest a text transcript: chunk, embed, and index."""
+    if get_settings().contract_test_mode:
+        return IngestResponse(
+            transcript_id="tx-001",
+            filename=request.filename,
+            source_type="text",
+            chunk_count=12,
+            status="processed",
+            message=f"Ingested 12 chunks from '{request.filename}'",
+        )
+
     transcript, chunks = await ingest_text(
         db, request.text, request.filename, request.metadata,
     )

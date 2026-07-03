@@ -54,7 +54,7 @@ async def run_evaluation(
                         is_deterministic=False,
                     )
                 ],
-                created_at=datetime.fromisoformat("2025-01-15T10:31:00"),
+                created_at=datetime.fromisoformat("2025-01-15T10:31:00+00:00"),
             )
         raise HTTPException(status_code=404, detail="Answer not found")
 

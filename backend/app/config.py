@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     rate_limit_burst: int = Field(10, description="Max burst capacity of tokens per IP")
     throttle_threshold_ratio: float = Field(0.7, description="Slow down requests if token usage exceeds this ratio")
     throttle_delay_seconds: float = Field(1.5, description="Delay duration in seconds during throttling")
+    contract_test_mode: bool = Field(False, description="Return deterministic contract examples without external services")
 
     model_config = {
         "env_file": ".env",
