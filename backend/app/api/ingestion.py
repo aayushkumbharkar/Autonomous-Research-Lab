@@ -44,7 +44,6 @@ async def ingest_text_endpoint(
         chunk_count=len(chunks),
         status=transcript.status,
         message=f"Ingested {len(chunks)} chunks from '{transcript.filename}'",
-        created_at=transcript.created_at,
     )
 
 
@@ -79,7 +78,6 @@ async def ingest_audio_endpoint(
             if transcript.status == "processed"
             else f"Ingestion failed: {transcript.error_message}"
         ),
-        created_at=transcript.created_at,
     )
 
 

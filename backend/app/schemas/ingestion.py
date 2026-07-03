@@ -47,4 +47,3 @@ class IngestResponse(BaseModel):
     chunk_count: int
     status: str
     message: str
-    created_at: datetime
