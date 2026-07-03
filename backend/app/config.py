@@ -7,12 +7,15 @@ All settings are validated at startup (fail-fast principle).
 
 from pathlib import Path
 from typing import Optional
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+
+    # --- Server/Network ---
+    port: Optional[int] = Field(None, description="Backend port")
 
     # --- API Keys ---
     groq_api_key: str = Field(..., description="Groq API key for LLM and Whisper")
@@ -58,12 +61,12 @@ class Settings(BaseSettings):
     throttle_delay_seconds: float = Field(1.5, description="Delay duration in seconds during throttling")
     contract_test_mode: bool = Field(False, description="Return deterministic contract examples without external services")
 
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-        "case_sensitive": False,
-        "extra": "ignore",
-    }
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
 
 # Singleton instance — imported by all modules
