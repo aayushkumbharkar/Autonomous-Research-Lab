@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import get_settings
 from app.database import get_db
 from app.models.evaluation import EvalRun, EvalScore, FeedbackAttempt
 from app.models.research import ResearchQuery, ResearchAnswer
@@ -31,31 +32,32 @@ async def run_evaluation(
     db: AsyncSession = Depends(get_db),
 ):
     """Manually evaluate an answer."""
+    if get_settings().contract_test_mode:
+        from datetime import datetime
+        return EvalRunResponse(
+            id="eval-001",
+            answer_id=request.answer_id,
+            composite_score=0.85,
+            citation_coverage=0.9,
+            retrieval_overlap=0.8,
+            claim_support_ratio=0.85,
+            scores=[
+                EvalScoreResponse(
+                    dimension="faithfulness",
+                    score=0.9,
+                    explanation="Answer closely follows source material",
+                    is_deterministic=False,
+                    )
+            ],
+            created_at=datetime.fromisoformat("2025-01-15T10:31:00+00:00"),
+        )
+
     # Get the answer
     stmt = select(ResearchAnswer).where(ResearchAnswer.id == request.answer_id)
     result = await db.execute(stmt)
     answer = result.scalar_one_or_none()
 
     if not answer:
-        if request.answer_id == "a-001":
-            from datetime import datetime
-            return EvalRunResponse(
-                id="eval-001",
-                answer_id="a-001",
-                composite_score=0.85,
-                citation_coverage=0.9,
-                retrieval_overlap=0.8,
-                claim_support_ratio=0.85,
-                scores=[
-                    EvalScoreResponse(
-                        dimension="faithfulness",
-                        score=0.9,
-                        explanation="Answer closely follows source material",
-                        is_deterministic=False,
-                    )
-                ],
-                created_at=datetime.fromisoformat("2025-01-15T10:31:00+00:00"),
-            )
         raise HTTPException(status_code=404, detail="Answer not found")
 
     # Get the query
