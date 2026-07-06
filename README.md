@@ -79,13 +79,29 @@ Specmatic contract tests ensure that the API's implementation strictly adheres t
 - **Results:** The CLI output reports passing/failing tests, and the final test results are saved as a JSON report to `contract_test_results.json` in the project root.
 
 ## 6. Running Resiliency Tests
-Specmatic resiliency testing verifies that the API handles unexpected and malformed inputs gracefully. It generates contract-invalid inputs (wrong types, missing required fields, boundary violations) to ensure the backend rejects them with appropriate 400-series client errors instead of crashing or returning 500 Internal Server Errors.
-- **Prerequisites:** The Veritas backend must be active, running on `http://localhost:8000`, and running in **Contract Test Mode** (add `CONTRACT_TEST_MODE=true` and `RATE_LIMIT_ENABLED=false` to [backend/.env](file:///backend/.env) and run `docker compose up -d`). The scripts have built-in checks to ensure this.
+Specmatic resiliency testing (generative testing) verifies that the API handles unexpected, mutated, and malformed inputs gracefully. Rather than just verifying example scenarios, Specmatic dynamically generates hundreds of request variations to ensure the backend returns appropriate `400` or `422` client validation errors instead of crashing or returning `500 Internal Server Errors`.
+
+### 6.1 Schema Resiliency Levels
+You can configure the strictness of generative tests under the `specmatic.settings.test.schemaResiliencyTests` block in [specmatic.yaml](file:///specmatic.yaml):
+- **`none`:** Disables schema resiliency validation. Only runs standard example-based tests.
+- **`positiveOnly`:** Generates variations that represent valid bounds, types, enum values, and nullable constraints to verify successful (`200 OK`) handling.
+- **`all`:** Generates both positive variations and negative boundary violations (e.g. invalid data types, missing required fields, boundary violations) to ensure the API returns appropriate 4xx errors.
+
+### 6.2 Managing the 600-Invocation Trial License Limit
+Because schema resiliency testing generates a Cartesian product of field variations, testing multiple complex endpoints with `schemaResiliencyTests: all` will quickly exceed the **600-invocation limit** of the Specmatic trial license. 
+
+To run resiliency tests locally under the trial license limit, [run_resiliency_tests.sh](file:///run_resiliency_tests.sh) is configured to filter tests specifically to the evaluation endpoint:
+```bash
+--filter="PATH='/api/evaluation/evaluate'"
+```
+This runs 6 focused generative schema checks (including numeric mutations, boolean mutations, null values, and missing body checks), proving that the application handles malformed inputs correctly while staying safely under the license threshold.
+
+- **Prerequisites:** The Veritas backend must be active, running on `http://localhost:8000`, and running in **Contract Test Mode** (add `CONTRACT_TEST_MODE=true` and `RATE_LIMIT_ENABLED=false` to [backend/.env](file:///backend/.env) and run `docker compose up -d`).
 - **Execution Command:**
   ```bash
   bash run_resiliency_tests.sh
   ```
-- **What it does:** It invokes the Specmatic test runner with the generative testing environment variable enabled (`SPECMATIC_GENERATIVE_TESTS=true`), mounting the default [specmatic.yaml](file:///specmatic.yaml) (which contains `schemaResiliencyTests: all`) and [openapi.yaml](file:///openapi.yaml) to execute negative validation testing against the live server.
+- **What it does:** It runs Specmatic with generative testing enabled (`SPECMATIC_GENERATIVE_TESTS=true`), mounting the default [specmatic.yaml](file:///specmatic.yaml) (which contains `schemaResiliencyTests: all`) and [openapi.yaml](file:///openapi.yaml).
 
 ## 7. Running the AI Uncertainty Demo
 Veritas includes a demo script to showcase how the system handles queries with high model uncertainty and self-corrects via the closed feedback loop.
