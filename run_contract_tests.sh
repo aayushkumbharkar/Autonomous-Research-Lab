@@ -20,6 +20,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Ensure license.txt exists (even as a placeholder) so Specmatic doesn't crash with NoSuchFileException
+if [ ! -f "${SCRIPT_DIR}/license.txt" ]; then
+    echo "# Place your Specmatic trial license here." > "${SCRIPT_DIR}/license.txt"
+fi
+
 CONTRACT_FILE="${SCRIPT_DIR}/specmatic.yaml"
 REPORT_FILE="${SCRIPT_DIR}/contract_test_results.json"
 BACKEND_URL="http://localhost:8000"
