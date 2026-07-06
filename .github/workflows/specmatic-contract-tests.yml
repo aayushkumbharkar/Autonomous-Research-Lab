@@ -47,6 +47,13 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"query":"What patterns emerge in user onboarding feedback?","top_k":10,"auto_evaluate":true,"auto_improve":false}'
 
+      - name: Create Specmatic license file from secret
+        if: ${{ secrets.SPECMATIC_LICENSE_KEY != '' }}
+        env:
+          LICENSE_CONTENT: ${{ secrets.SPECMATIC_LICENSE_KEY }}
+        run: |
+          echo "$LICENSE_CONTENT" > license.txt
+
       - name: Run Specmatic contract tests
         run: bash run_contract_tests.sh
         env:
