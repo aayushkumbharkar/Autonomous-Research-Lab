@@ -49,9 +49,13 @@ jobs:
 
       - name: Run Specmatic contract tests
         run: bash run_contract_tests.sh
+        env:
+          SPECMATIC_LICENSE_KEY: ${{ secrets.SPECMATIC_LICENSE_KEY }}
 
       - name: Run Specmatic resiliency tests
         run: bash run_resiliency_tests.sh
+        env:
+          SPECMATIC_LICENSE_KEY: ${{ secrets.SPECMATIC_LICENSE_KEY }}
 
 
       - name: Print contract test report

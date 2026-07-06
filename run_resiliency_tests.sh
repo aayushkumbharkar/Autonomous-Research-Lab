@@ -52,6 +52,7 @@ echo "Running Specmatic Resiliency Tests..."
 docker run --rm --network host \
   "${LICENSE_OPTS[@]}" \
   -e SPECMATIC_GENERATIVE_TESTS=true \
+  -e SPECMATIC_LICENSE_KEY="${SPECMATIC_LICENSE_KEY:-}" \
   -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml:ro" \
   -v "$(pwd)/openapi.yaml:/usr/src/app/openapi.yaml:ro" \
   -v "$(pwd)/examples:/usr/src/app/examples:ro" \
