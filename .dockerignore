@@ -1,0 +1,12 @@
+.git
+.github
+.gemini
+.venv
+venv
+backend/.venv
+backend/data
+frontend/node_modules
+frontend/dist
+specmatic_labs_temp
+*__pycache__
+*.pyc

@@ -50,6 +50,10 @@ jobs:
       - name: Run Specmatic contract tests
         run: bash run_contract_tests.sh
 
+      - name: Run Specmatic resiliency tests
+        run: bash run_resiliency_tests.sh
+
+
       - name: Print contract test report
         if: always()
         run: |

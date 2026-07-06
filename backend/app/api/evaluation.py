@@ -33,6 +33,8 @@ async def run_evaluation(
 ):
     """Manually evaluate an answer."""
     if get_settings().contract_test_mode:
+        if request.answer_id == "non-existent-id":
+            raise HTTPException(status_code=404, detail="Answer not found")
         from datetime import datetime
         return EvalRunResponse(
             id="eval-001",
@@ -51,6 +53,7 @@ async def run_evaluation(
             ],
             created_at=datetime.fromisoformat("2025-01-15T10:31:00+00:00"),
         )
+
 
     # Get the answer
     stmt = select(ResearchAnswer).where(ResearchAnswer.id == request.answer_id)

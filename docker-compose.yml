@@ -3,7 +3,7 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: research_lab_backend
     ports:
@@ -12,6 +12,8 @@ services:
       - ./backend/data:/app/data
     env_file:
       - ./backend/.env
+    environment:
+      - PORT=8000
     restart: always
 
   frontend:

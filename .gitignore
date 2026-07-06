@@ -46,3 +46,9 @@ htmlcov/
 
 # Gemini
 .gemini/
+
+# Specmatic License
+license.txt
+
+# Test Results
+contract_test_results.json

@@ -76,7 +76,7 @@ echo ""
 LICENSE_FILE="${SCRIPT_DIR}/license.txt"
 LICENSE_OPTS=()
 if [ -f "${LICENSE_FILE}" ]; then
-    LICENSE_OPTS=(-e SPECMATIC_LICENSE_PATH=/usr/src/app/specmatic-license.txt -v "${LICENSE_FILE}:/usr/src/app/specmatic-license.txt:ro")
+    LICENSE_OPTS=(-v "$(pwd)/license.txt:/usr/src/app/license.txt:ro")
 fi
 
 set +e
@@ -84,12 +84,15 @@ docker run \
     --name "${TEST_CONTAINER_NAME}" \
     --network host \
     "${LICENSE_OPTS[@]}" \
-    -v "${CONTRACT_FILE}:/usr/src/app/openapi.yaml:ro" \
+    -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml:ro" \
+    -v "$(pwd)/openapi.yaml:/usr/src/app/openapi.yaml:ro" \
+    -v "$(pwd)/examples:/usr/src/app/examples:ro" \
     specmatic/specmatic test \
     --host "localhost" \
     --port 8000 \
-    "/usr/src/app/openapi.yaml" \
     2>&1 | tee /tmp/specmatic_output.txt
+
+
 
 TEST_EXIT_CODE=${PIPESTATUS[0]}
 set -e
