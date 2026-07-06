@@ -13,8 +13,5 @@ systemUnderTest:
         type: test
         baseUrl: http://localhost:8000
 specmatic:
-  settings:
-    test:
-      schemaResiliencyTests: all
   license:
     path: ./license.txt

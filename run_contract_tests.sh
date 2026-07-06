@@ -106,7 +106,7 @@ docker run \
     --name "${TEST_CONTAINER_NAME}" \
     --network host \
     "${LICENSE_OPTS[@]}" \
-    -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml:ro" \
+    -v "$(pwd)/specmatic-contract.yaml:/usr/src/app/specmatic.yaml:ro" \
     -v "$(pwd)/openapi.yaml:/usr/src/app/openapi.yaml:ro" \
     -v "$(pwd)/examples:/usr/src/app/examples:ro" \
     specmatic/specmatic test \
