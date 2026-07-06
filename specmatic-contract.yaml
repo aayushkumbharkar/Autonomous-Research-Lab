@@ -13,5 +13,25 @@ systemUnderTest:
         type: test
         baseUrl: http://localhost:8000
 specmatic:
+  settings:
+    backwardCompatibility:
+      strictMode: true
+      baseBranch: origin/main
+    mock:
+      delayInMilliseconds: 1000
+      generative: true
+    test:
+      timeoutInMilliseconds: 1000
+      schemaResiliencyTests: none
+  governance:
+    report:
+      formats:
+        - ctrf
+        - html
+      outputDirectory: build/reports/specmatic
+    successCriteria:
+      enforce: true
+      maxMissedOperationsInSpec: 10
+      minCoveragePercentage: 75
   license:
-    path: ./license.txt
+    path: "{SPECMATIC_LICENSE_PATH:./license.txt}"
