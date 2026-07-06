@@ -1,3 +1,20 @@
 {
-  "value": "{\"query\": \"What are the key findings about user engagement?\", \"results\": [{\"chunk_id\": \"abc-123\", \"content\": \"User engagement increased by 40 percent after implementing the new onboarding flow.\", \"score\": 0.92, \"semantic_score\": 0.95, \"keyword_score\": 0.87, \"speaker\": \"Participant A\", \"transcript_id\": \"tx-001\", \"chunk_index\": 3}], \"total_results\": 1, \"search_metadata\": {\"method\": \"hybrid\", \"duration_ms\": 45}}"
+  "query": "What are the key findings about user engagement?",
+  "results": [
+    {
+      "chunk_id": "abc-123",
+      "content": "User engagement increased by 40 percent after implementing the new onboarding flow.",
+      "score": 0.92,
+      "semantic_score": 0.95,
+      "keyword_score": 0.87,
+      "speaker": "Participant A",
+      "transcript_id": "tx-001",
+      "chunk_index": 3
+    }
+  ],
+  "total_results": 1,
+  "search_metadata": {
+    "method": "hybrid",
+    "duration_ms": 45
+  }
 }

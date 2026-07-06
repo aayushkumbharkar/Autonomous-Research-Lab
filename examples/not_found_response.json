@@ -1,3 +1,9 @@
 {
-  "value": "{\"query\": \"non-existent query\", \"results\": [], \"total_results\": 0, \"search_metadata\": {\"method\": \"hybrid\", \"duration_ms\": 10}}"
+  "query": "non-existent query",
+  "results": [],
+  "total_results": 0,
+  "search_metadata": {
+    "method": "hybrid",
+    "duration_ms": 10
+  }
 }

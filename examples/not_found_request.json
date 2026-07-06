@@ -1,3 +1,4 @@
 {
-  "value": "{\"query\": \"non-existent query\", \"top_k\": 5}"
+  "query": "non-existent query",
+  "top_k": 5
 }

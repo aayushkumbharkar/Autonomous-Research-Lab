@@ -132,10 +132,6 @@ paths:
                   nullable: true
                   description: Metadata filters
             examples:
-              basic_search:
-                $ref: './examples/basic_search_request.json'
-              not_found:
-                $ref: './examples/not_found_request.json'
               weighted_search:
                 value:
                   query: "machine learning applications"
@@ -191,10 +187,6 @@ paths:
                   search_metadata:
                     type: object
               examples:
-                basic_search:
-                  $ref: './examples/basic_search_response.json'
-                not_found:
-                  $ref: './examples/not_found_response.json'
                 weighted_search:
                   value:
                     query: "machine learning applications"
