@@ -69,23 +69,23 @@ To run the backend locally on your host environment:
    ```
 
 ## 5. Running Contract Tests
-Specmatic contract tests ensure that the API's implementation strictly adheres to the OpenAPI specification contract defined in `openapi.yaml`.
-- **Prerequisites:** The Veritas backend must be active and running on `http://localhost:8000`.
+Specmatic contract tests ensure that the API's implementation strictly adheres to the OpenAPI specification contract defined in [openapi.yaml](file:///openapi.yaml).
+- **Prerequisites:** The Veritas backend must be active, running on `http://localhost:8000`, and running in **Contract Test Mode** (add `CONTRACT_TEST_MODE=true` and `RATE_LIMIT_ENABLED=false` to [backend/.env](file:///backend/.env) and run `docker compose up -d`). The scripts have built-in checks to ensure this.
 - **Execution Command:**
   ```bash
   bash run_contract_tests.sh
   ```
-- **What it does:** This runs contract verification tests inside a Docker container using the Specmatic test runner against the live backend endpoints.
+- **What it does:** This runs contract verification tests inside a Docker container using the Specmatic test runner against the live backend endpoints. It uses [specmatic-contract.yaml](file:///specmatic-contract.yaml) as the configuration, which bypasses resiliency test generation to keep Example tests under developer API limits.
 - **Results:** The CLI output reports passing/failing tests, and the final test results are saved as a JSON report to `contract_test_results.json` in the project root.
 
 ## 6. Running Resiliency Tests
 Specmatic resiliency testing verifies that the API handles unexpected and malformed inputs gracefully. It generates contract-invalid inputs (wrong types, missing required fields, boundary violations) to ensure the backend rejects them with appropriate 400-series client errors instead of crashing or returning 500 Internal Server Errors.
-- **Prerequisites:** The Veritas backend must be active and running on `http://localhost:8000`.
+- **Prerequisites:** The Veritas backend must be active, running on `http://localhost:8000`, and running in **Contract Test Mode** (add `CONTRACT_TEST_MODE=true` and `RATE_LIMIT_ENABLED=false` to [backend/.env](file:///backend/.env) and run `docker compose up -d`). The scripts have built-in checks to ensure this.
 - **Execution Command:**
   ```bash
   bash run_resiliency_tests.sh
   ```
-- **What it does:** It invokes the Specmatic test runner with the generative testing environment variable enabled (`SPECMATIC_GENERATIVE_TESTS=true`), mounting `specmatic.yaml` and `openapi.yaml` to execute negative validation testing against the live server.
+- **What it does:** It invokes the Specmatic test runner with the generative testing environment variable enabled (`SPECMATIC_GENERATIVE_TESTS=true`), mounting the default [specmatic.yaml](file:///specmatic.yaml) (which contains `schemaResiliencyTests: all`) and [openapi.yaml](file:///openapi.yaml) to execute negative validation testing against the live server.
 
 ## 7. Running the AI Uncertainty Demo
 Veritas includes a demo script to showcase how the system handles queries with high model uncertainty and self-corrects via the closed feedback loop.
