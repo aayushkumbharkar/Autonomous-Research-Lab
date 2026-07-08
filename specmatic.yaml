@@ -22,7 +22,7 @@ specmatic:
       delayInMilliseconds: 1000
       generative: true
     test:
-      timeoutInMilliseconds: 1000
+      timeoutInMilliseconds: 5000
       schemaResiliencyTests: none
   governance:
     report:

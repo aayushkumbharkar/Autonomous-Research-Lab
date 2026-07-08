@@ -138,6 +138,9 @@ paths:
                   top_k: 10
                   semantic_weight: 0.8
                   keyword_weight: 0.2
+              search_validation_error:
+                value:
+                  query: ""
       responses:
         '200':
           description: Search results with metadata
@@ -222,6 +225,18 @@ paths:
                           type: string
                         type:
                           type: string
+                        input: {}
+                        ctx:
+                          type: object
+              examples:
+                search_validation_error:
+                  value:
+                    detail:
+                      - loc:
+                          - body
+                          - query
+                        msg: "String should have at least 1 character"
+                        type: "string_too_short"
 
   /api/ingest/text:
     post:
@@ -453,6 +468,8 @@ paths:
               not_found:
                 value:
                   answer_id: "non-existent-id"
+              eval_validation_error:
+                value: {}
       responses:
         '200':
           description: Evaluation results
@@ -536,6 +553,15 @@ paths:
                     type: array
                     items:
                       type: object
+              examples:
+                eval_validation_error:
+                  value:
+                    detail:
+                      - loc:
+                          - body
+                          - answer_id
+                        msg: "Field required"
+                        type: "missing"
 
   /api/interview/sessions:
     post:

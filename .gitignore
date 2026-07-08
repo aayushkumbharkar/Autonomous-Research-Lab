@@ -52,3 +52,5 @@ license.txt
 
 # Test Results
 contract_test_results.json
+specmatic.jar
+build/
