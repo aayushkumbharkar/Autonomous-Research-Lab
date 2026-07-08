@@ -12,6 +12,7 @@ systemUnderTest:
       openapi:
         type: test
         baseUrl: http://localhost:8000
+        actuatorUrl: http://localhost:8000/actuator/mappings
 specmatic:
   settings:
     backwardCompatibility:
@@ -31,7 +32,7 @@ specmatic:
       outputDirectory: build/reports/specmatic
     successCriteria:
       enforce: true
-      maxMissedOperationsInSpec: 10
-      minCoveragePercentage: 75
+      maxMissedOperationsInSpec: 0
+      minCoveragePercentage: 100
   license:
     path: "{SPECMATIC_LICENSE_PATH:./license.txt}"

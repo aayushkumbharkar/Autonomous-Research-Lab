@@ -229,6 +229,58 @@ async def data_coverage():
     }
 
 
+# Specmatic-compatible actuator endpoint for route discovery and coverage calculation
+@app.get("/actuator/mappings", include_in_schema=False)
+async def actuator_mappings():
+    """
+    Specmatic-compatible actuator endpoint.
+
+    Returns all registered FastAPI routes in Spring Actuator mappings format
+    so Specmatic can discover every implemented endpoint and calculate true
+    API coverage across the full Veritas route surface.
+
+    Walks the full route tree recursively so routes registered via
+    include_router() (which nest under APIRouter objects) are included
+    alongside top-level routes.
+    """
+    from fastapi.routing import APIRoute
+
+    def collect_routes(route_list, prefix: str = "") -> list:
+        result = []
+        for route in route_list:
+            if isinstance(route, APIRoute):
+                full_path = prefix + route.path
+                for method in route.methods:
+                    result.append({
+                        "handler": route.name or full_path,
+                        "predicate": (
+                            f"{method} {full_path}, "
+                            f"produces [application/json]"
+                        ),
+                    })
+            elif hasattr(route, "original_router") and hasattr(route.original_router, "routes"):
+                # FastAPI _IncludedRouter: sub-routes live on .original_router.routes
+                route_prefix = getattr(route, "path", "") or ""
+                result.extend(collect_routes(route.original_router.routes, prefix + route_prefix))
+            elif hasattr(route, "routes"):
+                # Starlette Mount or any other router wrapper
+                route_prefix = getattr(route, "path", "") or ""
+                result.extend(collect_routes(route.routes, prefix + route_prefix))
+        return result
+
+    return {
+        "contexts": {
+            "application": {
+                "mappings": {
+                    "dispatcherServlets": {
+                        "dispatcherServlet": collect_routes(app.routes)
+                    }
+                }
+            }
+        }
+    }
+
+
 # Include routers
 from app.api.ingestion import router as ingestion_router
 from app.api.retrieval import router as retrieval_router

@@ -8,7 +8,7 @@
 # and can be run locally.
 #
 # Prerequisites:
-#   - Docker installed and running
+#   - Docker installed and running (preferred) OR Java 17+ (JAR fallback)
 #   - Veritas backend running on http://localhost:8000
 #   - specmatic.yaml at project root
 #
@@ -30,6 +30,7 @@ CONTRACT_FILE="${SCRIPT_DIR}/specmatic.yaml"
 REPORT_FILE="${SCRIPT_DIR}/contract_test_results.json"
 BACKEND_URL="http://localhost:8000"
 TEST_CONTAINER_NAME="specmatic-contract-test"
+SPECMATIC_JAR="${SCRIPT_DIR}/specmatic.jar"
 
 # Colors
 RED='\033[0;31m'
@@ -43,11 +44,6 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # ── Pre-flight checks ─────────────────────────────────────────────────────
-
-if ! command -v docker &> /dev/null; then
-    echo -e "${RED}Error: Docker is not installed.${NC}"
-    exit 1
-fi
 
 if [ ! -f "${CONTRACT_FILE}" ]; then
     echo -e "${RED}Error: Contract file not found: ${CONTRACT_FILE}${NC}"
@@ -81,11 +77,40 @@ if [[ "$HEALTH_STATUS" != *"contract-test"* ]]; then
 fi
 echo -e "${GREEN}OK${NC}"
 
+# ── Verify actuator endpoint is reachable ─────────────────────────────────
+
+echo -n "Verifying /actuator/mappings endpoint... "
+if curl -sf "${BACKEND_URL}/actuator/mappings" > /dev/null 2>&1; then
+    echo -e "${GREEN}OK${NC}"
+else
+    echo -e "${YELLOW}WARNING: /actuator/mappings not reachable — coverage may be incomplete${NC}"
+fi
+
+# ── Detect execution mode: Docker image or JAR fallback ──────────────────
+
+USE_DOCKER=false
+if command -v docker &>/dev/null && docker image inspect specmatic/specmatic > /dev/null 2>&1; then
+    USE_DOCKER=true
+    echo -e "${GREEN}Using Specmatic Docker image${NC}"
+elif [ -f "${SPECMATIC_JAR}" ]; then
+    echo -e "${YELLOW}Specmatic Docker image unavailable — using JAR fallback${NC}"
+elif command -v docker &>/dev/null; then
+    echo -e "${YELLOW}Docker image not cached — will use JAR if available${NC}"
+fi
+
+if [ "$USE_DOCKER" = false ] && [ ! -f "${SPECMATIC_JAR}" ]; then
+    echo -e "${RED}Error: Neither Specmatic Docker image nor specmatic.jar found.${NC}"
+    echo "Run the CI workflow (which downloads the JAR) or pull the image:"
+    echo "  docker pull specmatic/specmatic:latest"
+    exit 1
+fi
 
 # ── Clean up any previous test container ───────────────────────────────────
 
-docker stop "${TEST_CONTAINER_NAME}" 2>/dev/null || true
-docker rm "${TEST_CONTAINER_NAME}" 2>/dev/null || true
+if [ "$USE_DOCKER" = true ]; then
+    docker stop "${TEST_CONTAINER_NAME}" 2>/dev/null || true
+    docker rm "${TEST_CONTAINER_NAME}" 2>/dev/null || true
+fi
 
 # ── Run Specmatic contract tests ──────────────────────────────────────────
 
@@ -93,29 +118,39 @@ echo ""
 echo -e "${BOLD}Running Specmatic contract tests...${NC}"
 echo ""
 
-# Run Specmatic test command against the live backend
-# --host and --port point to the running Veritas instance
 LICENSE_FILE="${SCRIPT_DIR}/license.txt"
-LICENSE_OPTS=()
-if [ -f "${LICENSE_FILE}" ]; then
-    LICENSE_OPTS=(-v "$(pwd)/license.txt:/usr/src/app/license.txt:ro")
-fi
-
 set +e
-docker run \
-    --name "${TEST_CONTAINER_NAME}" \
-    --network host \
-    "${LICENSE_OPTS[@]}" \
-    -e SPECMATIC_LICENSE_KEY="${SPECMATIC_LICENSE_KEY:-}" \
-    -v "$(pwd)/specmatic-contract.yaml:/usr/src/app/specmatic.yaml:ro" \
-    -v "$(pwd)/openapi.yaml:/usr/src/app/openapi.yaml:ro" \
-    -v "$(pwd)/examples:/usr/src/app/examples:ro" \
-    specmatic/specmatic test \
-    --host "localhost" \
-    --port 8000 \
-    2>&1 | tee /tmp/specmatic_output.txt
 
+if [ "$USE_DOCKER" = true ]; then
+    # ── Docker path ──────────────────────────────────────────────────────
+    LICENSE_OPTS=()
+    if [ -f "${LICENSE_FILE}" ]; then
+        LICENSE_OPTS=(-v "$(pwd)/license.txt:/usr/src/app/license.txt:ro")
+    fi
 
+    docker run \
+        --name "${TEST_CONTAINER_NAME}" \
+        --network host \
+        "${LICENSE_OPTS[@]}" \
+        -e SPECMATIC_LICENSE_KEY="${SPECMATIC_LICENSE_KEY:-}" \
+        -v "$(pwd)/specmatic.yaml:/usr/src/app/specmatic.yaml:ro" \
+        -v "$(pwd)/openapi.yaml:/usr/src/app/openapi.yaml:ro" \
+        -v "$(pwd)/examples:/usr/src/app/examples:ro" \
+        specmatic/specmatic test \
+        --testBaseURL="${BACKEND_URL}" \
+        2>&1 | tee /tmp/specmatic_output.txt
+else
+    # ── JAR fallback path ────────────────────────────────────────────────
+    if ! command -v java &>/dev/null; then
+        echo -e "${RED}Error: Java not found. Install Java 17+ to use the JAR fallback.${NC}"
+        exit 1
+    fi
+
+    SPECMATIC_LICENSE_KEY="${SPECMATIC_LICENSE_KEY:-}" \
+    java -jar "${SPECMATIC_JAR}" test \
+        --testBaseURL="${BACKEND_URL}" \
+        2>&1 | tee /tmp/specmatic_output.txt
+fi
 
 TEST_EXIT_CODE=${PIPESTATUS[0]}
 set -e
@@ -149,7 +184,7 @@ cat > "${REPORT_FILE}" << EOF
     "contract_file": "specmatic.yaml",
     "backend_url": "${BACKEND_URL}",
     "tool": "specmatic",
-    "tool_version": "docker:specmatic/specmatic:latest"
+    "tool_version": "$([ "$USE_DOCKER" = true ] && echo 'docker:specmatic/specmatic:latest' || echo "jar:${SPECMATIC_JAR}")"
   },
   "output": $(python3 -c "
 import json, sys
@@ -164,6 +199,8 @@ echo -e "${YELLOW}Report saved to: ${REPORT_FILE}${NC}"
 
 # ── Cleanup ───────────────────────────────────────────────────────────────
 
-docker rm "${TEST_CONTAINER_NAME}" 2>/dev/null || true
+if [ "$USE_DOCKER" = true ]; then
+    docker rm "${TEST_CONTAINER_NAME}" 2>/dev/null || true
+fi
 
 exit "${TEST_EXIT_CODE}"

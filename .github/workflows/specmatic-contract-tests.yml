@@ -40,6 +40,7 @@ jobs:
       - name: Verify contract endpoints
         run: |
           curl -fsS http://localhost:8000/api/tools
+          curl -fsS http://localhost:8000/actuator/mappings
           curl -fsS -X POST http://localhost:8000/api/evaluation/evaluate \
             -H 'Content-Type: application/json' \
             -d '{"answer_id":"a-001"}'
@@ -55,6 +56,24 @@ jobs:
             echo "$LICENSE_CONTENT" > license.txt
           fi
 
+      - name: Pull Specmatic Docker image (with retry)
+        run: |
+          for i in 1 2 3; do
+            docker pull specmatic/specmatic:latest && break
+            echo "Pull attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+
+      - name: Download Specmatic JAR (fallback if Docker image unavailable)
+        run: |
+          if ! docker image inspect specmatic/specmatic > /dev/null 2>&1; then
+            echo "Docker image unavailable — downloading Specmatic JAR as fallback"
+            curl -L -o specmatic.jar \
+              https://github.com/specmatic/specmatic/releases/latest/download/specmatic.jar
+          else
+            echo "Docker image present — JAR fallback not needed"
+          fi
+
       - name: Run Specmatic contract tests
         run: bash run_contract_tests.sh
         env:
@@ -64,7 +83,6 @@ jobs:
         run: bash run_resiliency_tests.sh
         env:
           SPECMATIC_LICENSE_KEY: ${{ secrets.SPECMATIC_LICENSE_KEY }}
-
 
       - name: Print contract test report
         if: always()
