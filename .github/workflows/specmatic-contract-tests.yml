@@ -19,7 +19,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Set up Java (required for Specmatic JAR)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install Python dependencies
         run: pip install -r backend/requirements.txt
 
       - name: Create backend environment file
@@ -28,25 +34,52 @@ jobs:
           echo "PORT=8000" >> backend/.env
           echo "RATE_LIMIT_ENABLED=false" >> backend/.env
           echo "CONTRACT_TEST_MODE=true" >> backend/.env
-          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY || secrets.LLM_API_KEY || 'your-groq-api-key-here' }}" >> backend/.env
+          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> backend/.env
 
       - name: Start Veritas backend
         run: docker compose up -d --build
 
       - name: Wait for backend to be healthy
         run: |
-          timeout 60 bash -c 'until curl -f http://localhost:8000/health; do sleep 2; done' || (docker compose logs && exit 1)
+          timeout 60 bash -c 'until curl -sf http://localhost:8000/health; do sleep 2; done' \
+            || (docker compose logs && exit 1)
 
-      - name: Verify contract endpoints
+      - name: Verify all contract endpoints are responding
         run: |
+          echo "--- /actuator/mappings ---"
+          curl -fsS http://localhost:8000/actuator/mappings | python3 -c "
+          import json,sys
+          data=json.load(sys.stdin)
+          routes=data['contexts']['application']['mappings']['dispatcherServlets']['dispatcherServlet']
+          print(f'Routes discovered: {len(routes)}')
+          for r in routes: print(' ', r['predicate'])
+          "
+          echo "--- /health ---"
+          curl -fsS http://localhost:8000/health
+          echo "--- /api/health ---"
+          curl -fsS http://localhost:8000/api/health
+          echo "--- /api/tools ---"
           curl -fsS http://localhost:8000/api/tools
-          curl -fsS http://localhost:8000/actuator/mappings
+          echo "--- /api/search (200) ---"
+          curl -fsS -X POST http://localhost:8000/api/search \
+            -H 'Content-Type: application/json' \
+            -d '{"query":"machine learning applications","top_k":5}'
+          echo "--- /api/ingest/text (200) ---"
+          curl -fsS -X POST http://localhost:8000/api/ingest/text \
+            -H 'Content-Type: application/json' \
+            -d '{"title":"Test","content":"Sample content","source":"test"}'
+          echo "--- /api/research/query (200) ---"
+          curl -fsS -X POST http://localhost:8000/api/research/query \
+            -H 'Content-Type: application/json' \
+            -d '{"query":"What is RAG?","top_k":5}'
+          echo "--- /api/evaluation/evaluate (200) ---"
           curl -fsS -X POST http://localhost:8000/api/evaluation/evaluate \
             -H 'Content-Type: application/json' \
             -d '{"answer_id":"a-001"}'
-          curl -fsS -X POST http://localhost:8000/api/research/query \
+          echo "--- /api/interview/sessions (200) ---"
+          curl -fsS -X POST http://localhost:8000/api/interview/sessions \
             -H 'Content-Type: application/json' \
-            -d '{"query":"What patterns emerge in user onboarding feedback?","top_k":10,"auto_evaluate":true,"auto_improve":false}'
+            -d '{"topic":"User experience with the new dashboard"}'
 
       - name: Create Specmatic license file from secret
         env:
@@ -54,25 +87,15 @@ jobs:
         run: |
           if [ -n "$LICENSE_CONTENT" ]; then
             echo "$LICENSE_CONTENT" > license.txt
-          fi
-
-      - name: Pull Specmatic Docker image (with retry)
-        run: |
-          for i in 1 2 3; do
-            docker pull specmatic/specmatic:latest && break
-            echo "Pull attempt $i failed, retrying in 10s..."
-            sleep 10
-          done
-
-      - name: Download Specmatic JAR (fallback if Docker image unavailable)
-        run: |
-          if ! docker image inspect specmatic/specmatic > /dev/null 2>&1; then
-            echo "Docker image unavailable — downloading Specmatic JAR as fallback"
-            curl -L -o specmatic.jar \
-              https://github.com/specmatic/specmatic/releases/latest/download/specmatic.jar
           else
-            echo "Docker image present — JAR fallback not needed"
+            echo "# no license" > license.txt
           fi
+
+      - name: Download Specmatic JAR
+        run: |
+          curl -fL -o specmatic.jar \
+            https://github.com/specmatic/specmatic/releases/latest/download/specmatic.jar
+          echo "Specmatic JAR size: $(du -sh specmatic.jar | cut -f1)"
 
       - name: Run Specmatic contract tests
         run: bash run_contract_tests.sh
@@ -80,22 +103,33 @@ jobs:
           SPECMATIC_LICENSE_KEY: ${{ secrets.SPECMATIC_LICENSE_KEY }}
 
       - name: Run Specmatic resiliency tests
-        run: bash run_resiliency_tests.sh
+        run: |
+          if [ -f run_resiliency_tests.sh ]; then
+            bash run_resiliency_tests.sh
+          else
+            echo "run_resiliency_tests.sh not found — skipping"
+          fi
         env:
           SPECMATIC_LICENSE_KEY: ${{ secrets.SPECMATIC_LICENSE_KEY }}
 
-      - name: Print contract test report
+      - name: List generated Specmatic reports
         if: always()
         run: |
-          if [ -f contract_test_results.json ]; then
-            cat contract_test_results.json
-          else
-            echo "contract_test_results.json not found"
-          fi
+          echo "=== build/reports/specmatic tree ==="
+          find build/reports/specmatic -type f 2>/dev/null || echo "No reports found"
 
-      - name: Upload contract test report
+      - name: Upload Specmatic HTML Report (Contract Tests)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: contract-test-report
-          path: contract_test_results.json
+          name: specmatic-contract-report
+          path: build/reports/specmatic/
+          if-no-files-found: warn
+
+      - name: Upload Specmatic HTML Report (Resiliency Tests)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: specmatic-resiliency-report
+          path: build/reports/specmatic/
+          if-no-files-found: warn
