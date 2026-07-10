@@ -12,7 +12,7 @@ from typing import Optional
 from app.config import get_settings
 from app.tools.registry import ensure_default_tools_registered, get_registry
 
-router = APIRouter(prefix="/api/tools", tags=["tools"])
+router = APIRouter(prefix="/api", tags=["tools"])
 
 
 class ToolExecuteRequest(BaseModel):
@@ -24,8 +24,8 @@ class AutoSelectRequest(BaseModel):
     context: Optional[str] = None
 
 
-@router.get("")
-@router.get("/")
+@router.get("/tools")
+@router.get("/tools/")
 async def list_tools():
     """List all available MCP tools."""
     if get_settings().contract_test_mode:
@@ -46,7 +46,7 @@ async def list_tools():
     return {"tools": registry.list_tools()}
 
 
-@router.post("/{tool_name}/execute")
+@router.post("/tools/{tool_name}/execute")
 async def execute_tool(tool_name: str, request: ToolExecuteRequest):
     """Execute a specific tool by name."""
     registry = get_registry()
@@ -60,7 +60,7 @@ async def execute_tool(tool_name: str, request: ToolExecuteRequest):
     }
 
 
-@router.post("/auto-select")
+@router.post("/tools/auto-select")
 async def auto_select_tool(request: AutoSelectRequest):
     """
     LLM-driven tool selection: automatically pick the best tool
