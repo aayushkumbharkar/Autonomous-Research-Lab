@@ -34,10 +34,28 @@ async def list_tools():
                 {
                     "name": "search",
                     "description": "Hybrid semantic + keyword search",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "Search query"},
+                            "top_k": {"type": "integer", "default": 10, "description": "Number of results to retrieve"},
+                            "semantic_weight": {"type": "number", "default": 0.6, "description": "Weight for semantic search"},
+                            "keyword_weight": {"type": "number", "default": 0.4, "description": "Weight for keyword search"},
+                        },
+                        "required": ["query"],
+                    }
                 },
                 {
                     "name": "summarize",
                     "description": "Summarize retrieved chunks",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "Topic to summarize"},
+                            "max_length": {"type": "string", "enum": ["brief", "standard", "detailed"], "default": "standard"},
+                        },
+                        "required": ["query"],
+                    }
                 },
             ]
         }
