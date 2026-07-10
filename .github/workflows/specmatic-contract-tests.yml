@@ -33,7 +33,6 @@ jobs:
           cp backend/.env.example backend/.env
           echo "PORT=8000" >> backend/.env
           echo "RATE_LIMIT_ENABLED=false" >> backend/.env
-          echo "CONTRACT_TEST_MODE=true" >> backend/.env
           echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> backend/.env
 
       - name: Start Veritas backend
@@ -44,12 +43,8 @@ jobs:
           timeout 60 bash -c 'until curl -sf http://localhost:8000/health; do sleep 2; done' \
             || (docker compose logs && exit 1)
 
-      - name: Verify all contract endpoints are responding
+      - name: Verify actuator endpoint
         run: |
-          # Hard fail only on connection errors (curl exit 7).
-          # HTTP 4xx/5xx are logged with body for debugging — the Specmatic
-          # JAR run below is the authoritative contract gate.
-
           echo "=== /actuator/mappings (must succeed for Specmatic coverage) ==="
           curl -fsS http://localhost:8000/actuator/mappings | python3 -c "
           import json,sys
@@ -58,6 +53,12 @@ jobs:
           print(f'Routes discovered: {len(routes)}')
           for r in routes: print(' ', r['predicate'])
           "
+
+      - name: Verify all contract endpoints are responding
+        run: |
+          # Hard fail only on connection errors (curl exit 7).
+          # HTTP 4xx/5xx are logged with body for debugging — the Specmatic
+          # JAR run below is the authoritative contract gate.
 
           echo "=== /health ==="
           curl -fsS http://localhost:8000/health
@@ -115,18 +116,8 @@ jobs:
             https://github.com/specmatic/specmatic/releases/latest/download/specmatic.jar
           echo "Specmatic JAR size: $(du -sh specmatic.jar | cut -f1)"
 
-      - name: Run Specmatic contract tests
+      - name: Run Specmatic contract + resiliency tests
         run: bash run_contract_tests.sh
-        env:
-          SPECMATIC_LICENSE_KEY: ${{ secrets.SPECMATIC_LICENSE_KEY }}
-
-      - name: Run Specmatic resiliency tests
-        run: |
-          if [ -f run_resiliency_tests.sh ]; then
-            bash run_resiliency_tests.sh
-          else
-            echo "run_resiliency_tests.sh not found — skipping"
-          fi
         env:
           SPECMATIC_LICENSE_KEY: ${{ secrets.SPECMATIC_LICENSE_KEY }}
 
@@ -136,18 +127,10 @@ jobs:
           echo "=== build/reports/specmatic tree ==="
           find build/reports/specmatic -type f 2>/dev/null || echo "No reports found"
 
-      - name: Upload Specmatic HTML Report (Contract Tests)
+      - name: Upload Specmatic HTML Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: specmatic-contract-report
-          path: build/reports/specmatic/
-          if-no-files-found: warn
-
-      - name: Upload Specmatic HTML Report (Resiliency Tests)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: specmatic-resiliency-report
+          name: specmatic-report
           path: build/reports/specmatic/
           if-no-files-found: warn

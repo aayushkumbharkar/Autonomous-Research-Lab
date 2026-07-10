@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Specmatic Contract Test Runner
+# Specmatic Contract + Resiliency Test Runner
 # ============================================================================
 #
-# Runs Specmatic contract tests against the live Veritas backend using the
-# specmatic.jar binary. Reports are generated into build/reports/specmatic/.
+# Runs Specmatic contract tests AND schema resiliency tests against the live
+# Veritas backend using the specmatic.jar binary. Reports are generated into
+# build/reports/specmatic/.
+#
+# schemaResiliencyTests: all is set in specmatic.yaml, so both contract and
+# resiliency tests run in this single Specmatic invocation.
 #
 # Prerequisites:
 #   - Java 17+ available on PATH
 #   - specmatic.jar present at project root (downloaded by CI or manually)
-#   - Veritas backend running on http://localhost:8000 in CONTRACT_TEST_MODE
+#   - Veritas backend running on http://localhost:8000
 #   - specmatic.yaml at project root
 #
 # Usage:
@@ -36,8 +40,8 @@ YELLOW='\033[1;33m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-echo -e "${BOLD}Specmatic Contract Test Runner${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo -e "${BOLD}Specmatic Contract + Resiliency Test Runner${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
 # ── Pre-flight: specmatic.yaml ─────────────────────────────────────────────
@@ -76,19 +80,6 @@ else
     exit 1
 fi
 
-# ── Pre-flight: Contract test mode ────────────────────────────────────────
-
-echo -n "Verifying that Veritas backend is in Contract Test Mode... "
-HEALTH_STATUS=$(curl -sf "${BACKEND_URL}/api/health" || echo "")
-if [[ "$HEALTH_STATUS" != *"contract-test"* ]]; then
-    echo -e "${RED}FAILED${NC}"
-    echo ""
-    echo "The Veritas backend is not running in Contract Test Mode."
-    echo "Add 'CONTRACT_TEST_MODE=true' to backend/.env and restart."
-    exit 1
-fi
-echo -e "${GREEN}OK${NC}"
-
 # ── Pre-flight: Actuator endpoint ─────────────────────────────────────────
 
 echo -n "Verifying /actuator/mappings endpoint... "
@@ -101,13 +92,14 @@ print(len(routes))
 " 2>/dev/null || echo "?")
     echo -e "${GREEN}OK (${ROUTE_COUNT} routes discovered)${NC}"
 else
-    echo -e "${YELLOW}WARNING: /actuator/mappings not reachable — coverage may be incomplete${NC}"
+    echo -e "${YELLOW}WARNING: /actuator/mappings not reachable — coverage calculation may be incomplete${NC}"
 fi
 
-# ── Run Specmatic contract tests via JAR ──────────────────────────────────
+# ── Run Specmatic contract + resiliency tests via JAR ─────────────────────
 
 echo ""
-echo -e "${BOLD}Running Specmatic contract tests...${NC}"
+echo -e "${BOLD}Running Specmatic contract + resiliency tests...${NC}"
+echo "(schemaResiliencyTests: all is enabled in specmatic.yaml)"
 echo ""
 
 set +e
@@ -124,13 +116,13 @@ set -e
 
 echo ""
 if [ "${TEST_EXIT_CODE}" -eq 0 ]; then
-    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${GREEN}  All contract tests PASSED ✓${NC}"
-    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}  All contract + resiliency tests PASSED ✓${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 else
-    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${RED}  Contract tests FAILED ✗ (exit: ${TEST_EXIT_CODE})${NC}"
-    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${RED}  Contract + resiliency tests FAILED ✗ (exit: ${TEST_EXIT_CODE})${NC}"
+    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 fi
 
 echo ""

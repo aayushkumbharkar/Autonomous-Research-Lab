@@ -23,7 +23,7 @@ specmatic:
       generative: true
     test:
       timeoutInMilliseconds: 5000
-      schemaResiliencyTests: none
+      schemaResiliencyTests: all
   governance:
     report:
       formats:

@@ -68,40 +68,87 @@ To run the backend locally on your host environment:
    python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
    ```
 
-## 5. Running Contract Tests
-Specmatic contract tests ensure that the API's implementation strictly adheres to the OpenAPI specification contract defined in [openapi.yaml](file:///openapi.yaml).
-- **Prerequisites:** The Veritas backend must be active, running on `http://localhost:8000`, and running in **Contract Test Mode** (add `CONTRACT_TEST_MODE=true` and `RATE_LIMIT_ENABLED=false` to [backend/.env](file:///backend/.env) and run `docker compose up -d`). The scripts have built-in checks to ensure this.
+## 5. Running Contract and Resiliency Tests
+
+Specmatic contract and resiliency tests are unified into a **single script and a single CI job**. `schemaResiliencyTests: all` is set in [specmatic.yaml](specmatic.yaml), so both test types run in one Specmatic invocation — no separate resiliency script or job is needed.
+
+- **Prerequisites:** The Veritas backend must be running on `http://localhost:8000`. Start it with `docker compose up -d --build` or the local Python setup above. No special mode flags are required — the backend runs in its normal production mode so that Specmatic exercises real business logic.
 - **Execution Command:**
   ```bash
   bash run_contract_tests.sh
   ```
-- **What it does:** This runs contract verification tests inside a Docker container using the Specmatic test runner against the live backend endpoints. It uses [specmatic-contract.yaml](file:///specmatic-contract.yaml) as the configuration, which bypasses resiliency test generation to keep Example tests under developer API limits.
-- **Results:** The CLI output reports passing/failing tests, and the final test results are saved as a JSON report to `contract_test_results.json` in the project root.
+- **What it does:**
+  1. Checks the backend is healthy at `/health`.
+  2. Verifies the `/actuator/mappings` endpoint (used by Specmatic to discover all routes and calculate true API coverage).
+  3. Runs the Specmatic JAR with `schemaResiliencyTests: all` from [specmatic.yaml](specmatic.yaml), exercising all 8 spec endpoints with both example-based contract tests and generative resiliency tests in one pass.
+- **Results:** HTML report → `build/reports/specmatic/test/html/index.html`. CTRF JSON → `build/reports/specmatic/test/ctrf/ctrf-report.json`.
 
-## 6. Running Resiliency Tests
-Specmatic resiliency testing (generative testing) verifies that the API handles unexpected, mutated, and malformed inputs gracefully. Rather than just verifying example scenarios, Specmatic dynamically generates hundreds of request variations to ensure the backend returns appropriate `400` or `422` client validation errors instead of crashing or returning `500 Internal Server Errors`.
-
-### 6.1 Schema Resiliency Levels
-You can configure the strictness of generative tests under the `specmatic.settings.test.schemaResiliencyTests` block in [specmatic.yaml](file:///specmatic.yaml):
+### 5.1 Schema Resiliency Levels
+You can configure the strictness of generative tests under `specmatic.settings.test.schemaResiliencyTests` in [specmatic.yaml](specmatic.yaml):
 - **`none`:** Disables schema resiliency validation. Only runs standard example-based tests.
 - **`positiveOnly`:** Generates variations that represent valid bounds, types, enum values, and nullable constraints to verify successful (`200 OK`) handling.
-- **`all`:** Generates both positive variations and negative boundary violations (e.g. invalid data types, missing required fields, boundary violations) to ensure the API returns appropriate 4xx errors.
+- **`all`:** Generates both positive variations and negative boundary violations (e.g. invalid data types, missing required fields, boundary violations) to ensure the API returns appropriate 4xx errors. **This is the setting used in CI.**
 
-### 6.2 Managing the 600-Invocation Trial License Limit
-Because schema resiliency testing generates a Cartesian product of field variations, testing multiple complex endpoints with `schemaResiliencyTests: all` will quickly exceed the **600-invocation limit** of the Specmatic trial license. 
+## 6. Key Learnings: Enabling the Actuator for True Coverage
 
-To run resiliency tests locally under the trial license limit, [run_resiliency_tests.sh](file:///run_resiliency_tests.sh) is configured to filter tests specifically to the evaluation endpoint:
-```bash
---filter="PATH='/api/evaluation/evaluate'"
+A critical lesson from this project is the difference between **tests passing** and **tests actually covering your endpoints**.
+
+### The Problem: 0% Coverage on 7 of 8 Endpoints in CI
+
+The CI report showed `0% — not tested*!` for 7 of 8 endpoints even though every test scenario in `openapi.yaml` had a matching example and passed locally. The `*` meant "not eligible for coverage" and `!` meant "excluded by a filter" — but there were no filters. The real cause was that Specmatic could not calculate coverage because the `actuatorUrl` configured in `specmatic.yaml` was **unreachable inside the Specmatic Docker container** during the older Docker-based CI run. Without a successful actuator call, Specmatic does not know which routes the server actually implements, so it cannot match test runs to endpoints — resulting in 0% coverage for everything except the single endpoint tested by an inline example in the spec.
+
+### The Fix: Make the Actuator Reachable
+
+Specmatic uses a [Spring Boot-compatible Actuator endpoint](https://docs.spring.io/spring-boot/docs/current/actuator-api/htmlsingle/#mappings) at `/actuator/mappings` to discover every route registered in the server. Without this, it falls back to spec-only coverage tracking, which is far less accurate.
+
+Veritas is a FastAPI application, not Spring Boot. The fix was to implement a custom `/actuator/mappings` endpoint that returns all FastAPI routes in the exact JSON shape Specmatic expects:
+
+```python
+@app.get("/actuator/mappings", include_in_schema=False)
+async def actuator_mappings():
+    from fastapi.routing import APIRoute
+
+    def collect_routes(route_list, prefix=""):
+        result = []
+        for route in route_list:
+            if isinstance(route, APIRoute):
+                full_path = prefix + route.path
+                for method in route.methods:
+                    result.append({
+                        "handler": route.name or full_path,
+                        "predicate": f"{method} {full_path}, produces [application/json]",
+                    })
+            elif hasattr(route, "routes"):
+                route_prefix = getattr(route, "path", "") or ""
+                result.extend(collect_routes(route.routes, prefix + route_prefix))
+        return result
+
+    return {
+        "contexts": {
+            "application": {
+                "mappings": {
+                    "dispatcherServlets": {
+                        "dispatcherServlet": collect_routes(app.routes)
+                    }
+                }
+            }
+        }
+    }
 ```
-This runs 6 focused generative schema checks (including numeric mutations, boolean mutations, null values, and missing body checks), proving that the application handles malformed inputs correctly while staying safely under the license threshold.
 
-- **Prerequisites:** The Veritas backend must be active, running on `http://localhost:8000`, and running in **Contract Test Mode** (add `CONTRACT_TEST_MODE=true` and `RATE_LIMIT_ENABLED=false` to [backend/.env](file:///backend/.env) and run `docker compose up -d`).
-- **Execution Command:**
-  ```bash
-  bash run_resiliency_tests.sh
-  ```
-- **What it does:** It runs Specmatic with generative testing enabled (`SPECMATIC_GENERATIVE_TESTS=true`), mounting the default [specmatic.yaml](file:///specmatic.yaml) (which contains `schemaResiliencyTests: all`) and [openapi.yaml](file:///openapi.yaml).
+Once the actuator was reachable (CI switched from Docker-in-Docker to running Specmatic as a JAR with `--network host`), the coverage table immediately filled from `0%` to `100%` for all 8 endpoints.
+
+### The Second Problem: CONTRACT_TEST_MODE Bypassing Real Logic
+
+A `CONTRACT_TEST_MODE=true` environment variable had been added to CI to avoid needing external services (ChromaDB, embedding model) during tests. Every endpoint had bypass logic that returned hardcoded stub responses when this flag was set. This made contract tests pass but left the actual business logic entirely untested. Specmatic was validating stub data against the schema, not the real implementation.
+
+**The fix:** Remove `CONTRACT_TEST_MODE=true` from CI entirely. FastAPI's SQLite database initialises cleanly without any external services, so the backend starts normally in CI. Endpoints that previously required ChromaDB or the embedding model now run against a freshly-initialised empty database, which is correct contract testing behaviour — Specmatic provides the request data and validates the response shape, not the content.
+
+### The Third Problem: Separate Jobs for Contract and Resiliency Tests
+
+The original CI had two separate steps: one calling `run_contract_tests.sh` and one calling `run_resiliency_tests.sh`. The resiliency script used a `--filter` flag to restrict generative tests to a single endpoint, and it ran Specmatic via Docker with separate volume mounts. This was unnecessary complexity.
+
+**The fix:** Set `schemaResiliencyTests: all` in `specmatic.yaml` and delete `run_resiliency_tests.sh`. A single `run_contract_tests.sh` invocation runs both contract and resiliency tests in one Specmatic pass. CI is simplified to a single job with a single artifact upload.
 
 ## 7. Running the AI Uncertainty Demo
 Veritas includes a demo script to showcase how the system handles queries with high model uncertainty and self-corrects via the closed feedback loop.
@@ -116,8 +163,10 @@ Veritas includes a demo script to showcase how the system handles queries with h
   4. **Closed-Loop Self-Correction:** Logs the failure, performs retrieval expansion and query rewriting, and executes a successful retry run.
 
 ## 8. CI Pipeline
-The project is configured with a GitHub Actions workflow in [.github/workflows/specmatic-contract-tests.yml](file:///.github/workflows/specmatic-contract-tests.yml). The CI pipeline automatically spins up the Veritas backend service and executes:
-1. Standard Specmatic contract tests using `run_contract_tests.sh`.
-2. Specmatic resiliency tests using `run_resiliency_tests.sh`.
+The project is configured with a GitHub Actions workflow in [.github/workflows/specmatic-contract-tests.yml](.github/workflows/specmatic-contract-tests.yml). The CI pipeline runs a **single job** that:
+1. Starts the Veritas backend via `docker compose up -d --build` (no `CONTRACT_TEST_MODE` — real backend).
+2. Verifies the `/actuator/mappings` endpoint is reachable (prerequisite for accurate coverage calculation).
+3. Executes `run_contract_tests.sh`, which runs the Specmatic JAR once with `schemaResiliencyTests: all` set in [specmatic.yaml](specmatic.yaml) — covering both contract and resiliency tests in a single invocation.
+4. Uploads the HTML and CTRF reports as a single CI artifact named `specmatic-report`.
 
-This ensures that every push to the `main` and `develop` branches undergoes rigorous API contract compliance and input resiliency validation.
+This ensures that every push to `main` and `develop` branches undergoes rigorous API contract compliance and input resiliency validation, with accurate coverage reporting across all 8 endpoints.
