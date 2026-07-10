@@ -10,6 +10,7 @@ This gives users a real signal about output reliability,
 beyond just evaluation scores.
 """
 
+import asyncio
 import re
 from groq import Groq
 
@@ -133,17 +134,25 @@ async def generate_alternative_answer(
     Generate a second answer with higher temperature for disagreement detection.
     """
     settings = get_settings()
-    client = Groq(api_key=settings.groq_api_key)
+    client = Groq(
+        api_key=settings.groq_api_key,
+        timeout=settings.request_timeout,
+    )
 
     try:
-        response = client.chat.completions.create(
-            model=settings.groq_fast_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Context:\n{context}\n\nQuery: {query}"},
-            ],
-            temperature=0.8,  # Higher temperature for diversity
-            max_tokens=2048,
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Context:\n{context}\n\nQuery: {query}"},
+        ]
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: client.chat.completions.create(
+                model=settings.groq_fast_model,
+                messages=messages,
+                temperature=0.8,  # Higher temperature for diversity
+                max_tokens=2048,
+            ),
         )
         return response.choices[0].message.content or ""
     except Exception as e:

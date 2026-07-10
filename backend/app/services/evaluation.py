@@ -9,6 +9,7 @@ The composite score is a weighted blend of both signal types,
 making evaluation more robust than LLM-only approaches.
 """
 
+import asyncio
 import re
 import json
 from typing import Optional
@@ -153,11 +154,20 @@ async def _run_unified_llm_eval(
     }
 
     try:
-        response = client.chat.completions.create(
-            model=settings.groq_fast_model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,  # Low temperature for consistent scoring
-            max_tokens=1000,
+        client = Groq(
+            api_key=settings.groq_api_key,
+            timeout=settings.request_timeout,
+        )
+        messages = [{"role": "user", "content": prompt}]
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: client.chat.completions.create(
+                model=settings.groq_fast_model,
+                messages=messages,
+                temperature=0.1,  # Low temperature for consistent scoring
+                max_tokens=1000,
+            ),
         )
 
         content = response.choices[0].message.content or ""

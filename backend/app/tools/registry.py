@@ -7,6 +7,7 @@ Supports both rule-based and LLM-driven tool selection.
 Each tool implements BaseTool with structured inputs/outputs.
 """
 
+import asyncio
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -141,12 +142,20 @@ Respond with ONLY valid JSON:
 {{"tool": "<tool_name>", "params": {{<relevant parameters>}}, "reasoning": "<one sentence why>"}}"""
 
         try:
-            client = Groq(api_key=settings.groq_api_key)
-            response = client.chat.completions.create(
-                model=settings.groq_fast_model,
-                messages=[{"role": "user", "content": selection_prompt}],
-                temperature=0.1,
-                max_tokens=256,
+            client = Groq(
+                api_key=settings.groq_api_key,
+                timeout=settings.request_timeout,
+            )
+            messages = [{"role": "user", "content": selection_prompt}]
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: client.chat.completions.create(
+                    model=settings.groq_fast_model,
+                    messages=messages,
+                    temperature=0.1,
+                    max_tokens=256,
+                ),
             )
 
             content = response.choices[0].message.content or ""

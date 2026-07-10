@@ -1,5 +1,7 @@
 """Summarize Tool — generates summaries via Groq LLM."""
 
+import asyncio
+
 from groq import Groq
 from app.config import get_settings
 from app.tools.registry import BaseTool, ToolResult
@@ -51,15 +53,23 @@ class SummarizeTool(BaseTool):
             context = "\n\n".join([r.content for r in results])
 
             settings = get_settings()
-            client = Groq(api_key=settings.groq_api_key)
-            response = client.chat.completions.create(
-                model=settings.groq_fast_model,
-                messages=[
-                    {"role": "system", "content": "You are a precise summarizer. Summarize ONLY based on the provided content. Do not add information."},
-                    {"role": "user", "content": f"Summarize the following content about '{query}':\n\n{context}"},
-                ],
-                temperature=0.3,
-                max_tokens=length_tokens.get(max_length, 512),
+            client = Groq(
+                api_key=settings.groq_api_key,
+                timeout=settings.request_timeout,
+            )
+            messages = [
+                {"role": "system", "content": "You are a precise summarizer. Summarize ONLY based on the provided content. Do not add information."},
+                {"role": "user", "content": f"Summarize the following content about '{query}':\n\n{context}"},
+            ]
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: client.chat.completions.create(
+                    model=settings.groq_fast_model,
+                    messages=messages,
+                    temperature=0.3,
+                    max_tokens=length_tokens.get(max_length, 512),
+                ),
             )
 
             summary = response.choices[0].message.content or ""

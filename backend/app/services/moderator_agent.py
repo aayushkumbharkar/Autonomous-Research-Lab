@@ -8,6 +8,7 @@ Conducts adaptive interviews:
 - Produces session summaries
 """
 
+import asyncio
 from typing import Optional
 
 from groq import Groq
@@ -76,15 +77,23 @@ async def start_session(
 
     # Generate opening question
     try:
-        client = Groq(api_key=settings.groq_api_key)
-        response = client.chat.completions.create(
-            model=settings.groq_fast_model,
-            messages=[
-                {"role": "system", "content": MODERATOR_SYSTEM_PROMPT},
-                {"role": "user", "content": f"Begin an interview about: {topic}\n\nAsk your opening question."},
-            ],
-            temperature=0.7,
-            max_tokens=512,
+        client = Groq(
+            api_key=settings.groq_api_key,
+            timeout=settings.request_timeout,
+        )
+        messages = [
+            {"role": "system", "content": MODERATOR_SYSTEM_PROMPT},
+            {"role": "user", "content": f"Begin an interview about: {topic}\n\nAsk your opening question."},
+        ]
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: client.chat.completions.create(
+                model=settings.groq_fast_model,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=512,
+            ),
         )
         opening_text = response.choices[0].message.content or "Tell me about your experience with this topic."
     except Exception as e:
@@ -188,12 +197,19 @@ async def send_message(
 
     # Generate follow-up
     try:
-        client = Groq(api_key=settings.groq_api_key)
-        response = client.chat.completions.create(
-            model=settings.groq_fast_model,
-            messages=chat_history,
-            temperature=0.7,
-            max_tokens=512,
+        client = Groq(
+            api_key=settings.groq_api_key,
+            timeout=settings.request_timeout,
+        )
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: client.chat.completions.create(
+                model=settings.groq_fast_model,
+                messages=chat_history,
+                temperature=0.7,
+                max_tokens=512,
+            ),
         )
         followup_text = response.choices[0].message.content or ""
     except Exception as e:
@@ -250,14 +266,21 @@ async def end_session(
 
     # Generate summary
     try:
-        client = Groq(api_key=settings.groq_api_key)
-        response = client.chat.completions.create(
-            model=settings.groq_fast_model,
-            messages=[
-                {"role": "user", "content": SUMMARY_PROMPT.format(transcript=transcript)},
-            ],
-            temperature=0.3,
-            max_tokens=1024,
+        client = Groq(
+            api_key=settings.groq_api_key,
+            timeout=settings.request_timeout,
+        )
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: client.chat.completions.create(
+                model=settings.groq_fast_model,
+                messages=[
+                    {"role": "user", "content": SUMMARY_PROMPT.format(transcript=transcript)},
+                ],
+                temperature=0.3,
+                max_tokens=1024,
+            ),
         )
         session.summary = response.choices[0].message.content or ""
     except Exception as e:

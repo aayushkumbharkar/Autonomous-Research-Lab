@@ -8,6 +8,7 @@ computes confidence, and triggers evaluation + feedback loop.
 Every output is fully traceable.
 """
 
+import asyncio
 import re
 import uuid
 from typing import Optional
@@ -122,15 +123,23 @@ async def research_query(
     context_prompt = _build_context_prompt(context_chunks)
 
     try:
-        client = Groq(api_key=settings.groq_api_key)
-        response = client.chat.completions.create(
-            model=settings.groq_model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Context Chunks:\n{context_prompt}\n\nResearch Question: {query_text}"},
-            ],
-            temperature=0.3,
-            max_tokens=4096,
+        client = Groq(
+            api_key=settings.groq_api_key,
+            timeout=settings.request_timeout,
+        )
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f"Context Chunks:\n{context_prompt}\n\nResearch Question: {query_text}"},
+        ]
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: client.chat.completions.create(
+                model=settings.groq_model,
+                messages=messages,
+                temperature=0.3,
+                max_tokens=4096,
+            ),
         )
         answer_text = response.choices[0].message.content or ""
     except Exception as e:

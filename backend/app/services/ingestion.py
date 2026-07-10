@@ -5,6 +5,7 @@ Accepts raw transcripts (text or audio), chunks them,
 generates embeddings, and stores in both SQLite and ChromaDB.
 """
 
+import asyncio
 import uuid
 from typing import Optional
 
@@ -178,12 +179,25 @@ async def ingest_audio(
     logger.info("transcribing_audio", filename=filename, size_bytes=len(audio_bytes))
 
     try:
-        client = Groq(api_key=settings.groq_api_key)
-        transcription = client.audio.transcriptions.create(
-            file=(filename, audio_bytes),
-            model=settings.whisper_model,
-            response_format="verbose_json",
-            timestamp_granularities=["segment"],
+        import os
+        from groq import Groq
+
+        settings = get_settings()
+        logger.info("transcribing_audio", filename=filename, size_bytes=len(audio_bytes))
+
+        client = Groq(
+            api_key=settings.groq_api_key,
+            timeout=settings.request_timeout,
+        )
+        loop = asyncio.get_event_loop()
+        transcription = await loop.run_in_executor(
+            None,
+            lambda: client.audio.transcriptions.create(
+                file=(filename, audio_bytes),
+                model=settings.whisper_model,
+                response_format="verbose_json",
+                timestamp_granularities=["segment"],
+            ),
         )
 
         # Extract text and build timestamp-enriched transcript
