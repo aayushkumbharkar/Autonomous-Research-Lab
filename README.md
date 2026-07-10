@@ -80,14 +80,18 @@ Specmatic contract and resiliency tests are unified into a **single script and a
 - **What it does:**
   1. Checks the backend is healthy at `/health`.
   2. Verifies the `/actuator/mappings` endpoint (used by Specmatic to discover all routes and calculate true API coverage).
-  3. Runs the Specmatic JAR with `schemaResiliencyTests: all` from [specmatic.yaml](specmatic.yaml), exercising all 8 spec endpoints with both example-based contract tests and generative resiliency tests in one pass.
+  3. Runs the Specmatic JAR with `schemaResiliencyTests: positiveOnly` from [specmatic.yaml](specmatic.yaml), exercising all 8 spec endpoints with both example-based contract tests and generative resiliency tests (positive boundary variations) in one pass.
 - **Results:** HTML report → `build/reports/specmatic/test/html/index.html`. CTRF JSON → `build/reports/specmatic/test/ctrf/ctrf-report.json`.
 
-### 5.1 Schema Resiliency Levels
+### 5.1 Schema Resiliency Levels and the 600-Invocation Limit
 You can configure the strictness of generative tests under `specmatic.settings.test.schemaResiliencyTests` in [specmatic.yaml](specmatic.yaml):
 - **`none`:** Disables schema resiliency validation. Only runs standard example-based tests.
-- **`positiveOnly`:** Generates variations that represent valid bounds, types, enum values, and nullable constraints to verify successful (`200 OK`) handling.
-- **`all`:** Generates both positive variations and negative boundary violations (e.g. invalid data types, missing required fields, boundary violations) to ensure the API returns appropriate 4xx errors. **This is the setting used in CI.**
+- **`positiveOnly`:** Generates variations that represent valid bounds, types, enum values, and nullable constraints to verify successful (`200 OK`) handling. **This is the setting used in CI.**
+- **`all`:** Generates both positive variations and negative boundary violations (e.g. invalid data types, missing required fields, boundary violations) to ensure the API returns appropriate 4xx errors.
+
+**Why `positiveOnly` and not `all`?**
+Specmatic's `all` mode generates a Cartesian product of mutations across every field, nested object, and array in both request and response schemas. For 8 endpoints with deeply nested schemas (e.g. `/api/research/query` has `confidence`, `citations`, `claim_verifications` arrays, each with multiple properties), this quickly exceeds the **600-invocation limit** of the Specmatic Enterprise trial license. `positiveOnly` runs only valid boundary variations — still meaningful resiliency testing — while keeping total invocations safely under the threshold.
+
 
 ## 6. Key Learnings: Enabling the Actuator for True Coverage
 

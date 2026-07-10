@@ -7,8 +7,11 @@
 # Veritas backend using the specmatic.jar binary. Reports are generated into
 # build/reports/specmatic/.
 #
-# schemaResiliencyTests: all is set in specmatic.yaml, so both contract and
-# resiliency tests run in this single Specmatic invocation.
+# schemaResiliencyTests: positiveOnly is set in specmatic.yaml, so both contract and
+# resiliency tests (positive boundary variations) run in this single Specmatic invocation.
+# positiveOnly is used instead of 'all' to stay within the 600-invocation trial license
+# limit — 'all' generates a Cartesian product of positive + negative mutations across
+# nested schemas that exceeds 600 even for 8 endpoints.
 #
 # Prerequisites:
 #   - Java 17+ available on PATH
