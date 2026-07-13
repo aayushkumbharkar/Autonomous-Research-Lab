@@ -2,12 +2,14 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, StrictStr
 
 
 class EvalRequest(BaseModel):
     """Manual evaluation request."""
-    answer_id: str = Field(..., description="Answer to evaluate")
+    model_config = ConfigDict(strict=True)
+
+    answer_id: StrictStr = Field(..., description="Answer to evaluate")
 
 
 class EvalScoreResponse(BaseModel):

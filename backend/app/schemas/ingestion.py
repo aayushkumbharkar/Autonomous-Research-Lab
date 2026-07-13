@@ -2,13 +2,15 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, StrictStr
 
 
 class IngestTextRequest(BaseModel):
     """Request to ingest a text transcript."""
-    text: str = Field(..., min_length=1, description="Raw transcript text")
-    filename: str = Field(..., min_length=1, description="Source filename")
+    model_config = ConfigDict(strict=True)
+
+    text: StrictStr = Field(..., min_length=1, description="Raw transcript text")
+    filename: StrictStr = Field(..., min_length=1, description="Source filename")
     metadata: Optional[dict] = Field(None, description="Additional metadata (speakers, context, etc.)")
 
 

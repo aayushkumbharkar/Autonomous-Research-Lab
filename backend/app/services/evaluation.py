@@ -12,6 +12,7 @@ making evaluation more robust than LLM-only approaches.
 import asyncio
 import re
 import json
+import os
 from typing import Optional
 
 from groq import Groq
@@ -137,6 +138,14 @@ async def _run_unified_llm_eval(
     Evaluate all 4 dimensions in a single LLM call.
     Returns a dict mapping dimension name to (score, explanation).
     """
+    if os.environ.get("MOCK_LLM") == "true":
+        return {
+            "faithfulness": (1.0, "Mocked faithfulness"),
+            "coverage": (1.0, "Mocked coverage"),
+            "specificity": (1.0, "Mocked specificity"),
+            "retrieval_quality": (1.0, "Mocked retrieval quality"),
+        }
+
     settings = get_settings()
     client = Groq(api_key=settings.groq_api_key)
 

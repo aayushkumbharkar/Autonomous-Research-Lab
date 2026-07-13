@@ -2,15 +2,17 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, StrictInt, StrictBool, StrictStr
 
 
 class ResearchQueryRequest(BaseModel):
     """Research query submission."""
-    query: str = Field(..., min_length=1, description="Research question")
-    top_k: int = Field(10, ge=1, le=50, description="Context chunks to retrieve")
-    auto_evaluate: bool = Field(True, description="Run evaluation automatically")
-    auto_improve: bool = Field(True, description="Trigger feedback loop if score is low")
+    model_config = ConfigDict(strict=True)
+
+    query: StrictStr = Field(..., min_length=1, description="Research question")
+    top_k: StrictInt = Field(10, ge=1, le=50, description="Context chunks to retrieve")
+    auto_evaluate: StrictBool = Field(True, description="Run evaluation automatically")
+    auto_improve: StrictBool = Field(True, description="Trigger feedback loop if score is low")
 
 
 class ClaimVerification(BaseModel):
@@ -58,6 +60,3 @@ class ResearchQueryListItem(BaseModel):
     query_text: str
     answer_count: int
     best_score: Optional[float] = None
-    created_at: datetime
-
-    model_config = {"from_attributes": True}

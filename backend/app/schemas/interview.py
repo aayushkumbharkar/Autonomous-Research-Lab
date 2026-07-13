@@ -2,17 +2,21 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, StrictStr
 
 
 class StartSessionRequest(BaseModel):
     """Start a new interview session."""
-    topic: str = Field(..., min_length=1, description="Interview topic")
+    model_config = ConfigDict(strict=True)
+
+    topic: StrictStr = Field(..., min_length=1, description="Interview topic")
 
 
 class SendMessageRequest(BaseModel):
     """Send a participant message."""
-    message: str = Field(..., min_length=1, description="Participant response")
+    model_config = ConfigDict(strict=True)
+
+    message: StrictStr = Field(..., min_length=1, description="Participant response")
 
 
 class MessageResponse(BaseModel):

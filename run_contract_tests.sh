@@ -7,12 +7,6 @@
 # Veritas backend using the specmatic.jar binary. Reports are generated into
 # build/reports/specmatic/.
 #
-# schemaResiliencyTests: positiveOnly is set in specmatic.yaml, so both contract and
-# resiliency tests (positive boundary variations) run in this single Specmatic invocation.
-# positiveOnly is used instead of 'all' to stay within the 600-invocation trial license
-# limit — 'all' generates a Cartesian product of positive + negative mutations across
-# nested schemas that exceeds 600 even for 8 endpoints.
-#
 # Prerequisites:
 #   - Java 17+ available on PATH
 #   - specmatic.jar present at project root (downloaded by CI or manually)
@@ -34,7 +28,7 @@ if [ ! -f "${SCRIPT_DIR}/license.txt" ]; then
 fi
 
 BACKEND_URL="http://localhost:8000"
-SPECMATIC_JAR="${SCRIPT_DIR}/specmatic.jar"
+SPECMATIC_JAR="${HOME}/.specmatic/specmatic.jar"
 
 # Colors
 RED='\033[0;31m'
@@ -56,47 +50,47 @@ fi
 
 # ── Pre-flight: Java ──────────────────────────────────────────────────────
 
-if ! command -v java &>/dev/null; then
+if ! command -v java &>/dev/null && ! command -v java.exe &>/dev/null; then
     echo -e "${RED}Error: Java not found. Install Java 17+.${NC}"
     exit 1
 fi
 
+JAVA_CMD="java"
+if command -v java.exe &>/dev/null && ! command -v java &>/dev/null; then
+    JAVA_CMD="java.exe"
+fi
+
 # ── Pre-flight: specmatic.jar ─────────────────────────────────────────────
 
-if [ ! -f "${SPECMATIC_JAR}" ]; then
-    echo -e "${RED}Error: specmatic.jar not found at ${SPECMATIC_JAR}${NC}"
-    echo "Download it with:"
-    echo "  curl -L -o specmatic.jar https://github.com/specmatic/specmatic/releases/latest/download/specmatic.jar"
-    exit 1
+SPECMATIC_VERSION="2.50.0"  # pin to a specific version
+
+if [ ! -f "$SPECMATIC_JAR" ]; then
+    echo "Downloading Specmatic JAR..."
+    mkdir -p "${HOME}/.specmatic"
+    curl -L -o "$SPECMATIC_JAR" \
+      "https://github.com/specmatic/specmatic/releases/download/${SPECMATIC_VERSION}/specmatic.jar"
+    echo "Specmatic JAR downloaded to $SPECMATIC_JAR"
 fi
 
-# ── Pre-flight: Backend health ────────────────────────────────────────────
+# ── Configure MOCK_LLM & RATE_LIMIT_ENABLED environment ────────────────────
 
-echo -n "Checking if Veritas backend is running... "
-if curl -sf "${BACKEND_URL}/health" > /dev/null 2>&1; then
-    echo -e "${GREEN}OK${NC}"
-else
-    echo -e "${RED}FAILED${NC}"
-    echo ""
-    echo "The Veritas backend is not responding at ${BACKEND_URL}/health"
-    echo "Start it with: docker compose up -d --build"
-    exit 1
+if command -v docker-compose &>/dev/null; then
+    echo "Enabling MOCK_LLM mode and disabling rate limits for Veritas backend..."
+    MOCK_LLM=true RATE_LIMIT_ENABLED=false docker-compose up -d backend > /dev/null
 fi
 
-# ── Pre-flight: Actuator endpoint ─────────────────────────────────────────
+# ── Wait for Backend health & Actuator verification ──────────────────────
 
-echo -n "Verifying /actuator/mappings endpoint... "
-if curl -sf "${BACKEND_URL}/actuator/mappings" > /dev/null 2>&1; then
-    ROUTE_COUNT=$(curl -sf "${BACKEND_URL}/actuator/mappings" | python3 -c "
-import json,sys
-data=json.load(sys.stdin)
-routes=data['contexts']['application']['mappings']['dispatcherServlets']['dispatcherServlet']
-print(len(routes))
-" 2>/dev/null || echo "?")
-    echo -e "${GREEN}OK (${ROUTE_COUNT} routes discovered)${NC}"
-else
-    echo -e "${YELLOW}WARNING: /actuator/mappings not reachable — coverage calculation may be incomplete${NC}"
-fi
+echo "Waiting for Veritas backend..."
+timeout 120 bash -c \
+  'until curl -sf http://localhost:8000/health \
+   > /dev/null 2>&1; do sleep 3; done'
+echo "Backend ready."
+
+echo "Verifying actuator endpoint..."
+curl -sf http://localhost:8000/actuator/mappings \
+  | python3 -m json.tool > /dev/null
+echo "Actuator endpoint verified."
 
 # ── Run Specmatic contract + resiliency tests via JAR ─────────────────────
 
@@ -107,13 +101,26 @@ echo ""
 
 set +e
 
+SPECMATIC_JAR_PATH="${SPECMATIC_JAR}"
+if [[ "$JAVA_CMD" == *".exe" ]] && command -v wslpath &>/dev/null; then
+    SPECMATIC_JAR_PATH=$(wslpath -w "$SPECMATIC_JAR")
+fi
+
 SPECMATIC_LICENSE_KEY="${SPECMATIC_LICENSE_KEY:-}" \
-java -jar "${SPECMATIC_JAR}" test \
+"$JAVA_CMD" -jar "${SPECMATIC_JAR_PATH}" test \
     --testBaseURL="${BACKEND_URL}" \
     2>&1
 
 TEST_EXIT_CODE=${PIPESTATUS[0]:-$?}
 set -e
+
+# ── Restore MOCK_LLM & RATE_LIMIT_ENABLED state ────────────────────────────
+
+if command -v docker-compose &>/dev/null; then
+    echo "Restoring Veritas backend..."
+    docker-compose up -d backend > /dev/null
+    sleep 2
+fi
 
 # ── Result summary ────────────────────────────────────────────────────────
 

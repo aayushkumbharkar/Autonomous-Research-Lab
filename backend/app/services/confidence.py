@@ -12,6 +12,7 @@ beyond just evaluation scores.
 
 import asyncio
 import re
+import os
 from groq import Groq
 
 from app.config import get_settings
@@ -133,6 +134,10 @@ async def generate_alternative_answer(
     """
     Generate a second answer with higher temperature for disagreement detection.
     """
+    import os
+    if os.environ.get("MOCK_LLM") == "true":
+        return "Based on the available context, the participants expressed high satisfaction with the new dashboard's speed and layout [1]."
+
     settings = get_settings()
     client = Groq(
         api_key=settings.groq_api_key,

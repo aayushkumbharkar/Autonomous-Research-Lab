@@ -1,15 +1,17 @@
 """Pydantic schemas for the Retrieval module."""
 
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, StrictInt, StrictFloat, StrictStr
 
 
 class SearchRequest(BaseModel):
     """Hybrid search request."""
-    query: str = Field(..., min_length=1, description="Search query")
-    top_k: int = Field(10, ge=1, le=100, description="Number of results")
-    semantic_weight: float = Field(0.6, ge=0.0, le=1.0)
-    keyword_weight: float = Field(0.4, ge=0.0, le=1.0)
+    model_config = ConfigDict(strict=True)
+
+    query: StrictStr = Field(..., min_length=1, description="Search query")
+    top_k: StrictInt = Field(10, ge=1, le=100, description="Number of results")
+    semantic_weight: StrictFloat = Field(0.6, ge=0.0, le=1.0)
+    keyword_weight: StrictFloat = Field(0.4, ge=0.0, le=1.0)
     filters: Optional[dict] = Field(None, description="Metadata filters")
 
 
