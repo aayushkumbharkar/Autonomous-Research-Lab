@@ -30,10 +30,10 @@ jobs:
 
       - name: Create backend environment file
         run: |
-          cp backend/.env.example backend/.env
-          echo "PORT=8000" >> backend/.env
-          echo "RATE_LIMIT_ENABLED=false" >> backend/.env
-          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> backend/.env
+          cp .env.example .env
+          echo "PORT=8000" >> .env
+          echo "RATE_LIMIT_ENABLED=false" >> .env
+          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> .env
 
       - name: Start Veritas backend
         run: |
