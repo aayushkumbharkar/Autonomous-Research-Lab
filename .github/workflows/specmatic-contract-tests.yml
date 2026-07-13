@@ -36,20 +36,35 @@ jobs:
           echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> backend/.env
 
       - name: Start Veritas backend
-        run: docker compose up -d --build
+        run: |
+          docker compose up -d --build
+          echo "=== docker compose ps ==="
+          docker compose ps
+          echo "Services:"
+          docker compose ps --services
+          echo "=== backend logs (tail 500) ==="
+          docker compose logs --no-color --timestamps --tail=500 backend || docker compose logs --no-color --timestamps --tail=500 || true
 
       - name: Wait for backend to be healthy
         run: |
           timeout 60 bash -c 'until curl -sf http://localhost:8000/health; do sleep 2; done' \
-            || (docker compose logs && exit 1)
+            || (echo "Backend failed to become healthy within timeout. Showing backend logs:" \
+                && docker compose logs --no-color --timestamps --tail=500 backend || docker compose logs --no-color --timestamps --tail=500 || true \
+                && docker compose ps \
+                && exit 1)
 
       - name: Verify actuator endpoint
         run: |
           echo "=== /actuator/mappings (must succeed for Specmatic coverage) ==="
-          curl -fsS http://localhost:8000/actuator/mappings | python3 -c "
-          import json,sys
-          data=json.load(sys.stdin)
-          routes=data['contexts']['application']['mappings']['dispatcherServlets']['dispatcherServlet']
+          curl -fsS http://localhost:8000/actuator/mappings > actuator_output.json || (
+            echo "ERROR: actuator/mappings did not respond; dumping backend logs:"
+            docker compose logs --no-color --timestamps --tail=500 backend || docker compose logs --no-color --timestamps --tail=500 || true
+            exit 1
+          )
+          python3 -c "
+          import json, sys
+          data = json.load(open('actuator_output.json'))
+          routes = data['contexts']['application']['mappings']['dispatcherServlets']['dispatcherServlet']
           print(f'Routes discovered: {len(routes)}')
           for r in routes: print(' ', r['predicate'])
           "
