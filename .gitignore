@@ -47,8 +47,9 @@ htmlcov/
 # Gemini
 .gemini/
 
-# Specmatic License
+# Specmatic License (both original and renamed form kept out of repo)
 license.txt
+specmatic-trial-license.expired.txt
 
 # Test Results
 contract_test_results.json

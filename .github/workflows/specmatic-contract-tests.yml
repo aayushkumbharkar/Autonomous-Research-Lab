@@ -47,11 +47,20 @@ jobs:
 
       - name: Wait for backend to be healthy
         run: |
-          timeout 60 bash -c 'until curl -sf http://localhost:8000/health; do sleep 2; done' \
-            || (echo "Backend failed to become healthy within timeout. Showing backend logs:" \
-                && docker compose logs --no-color --timestamps --tail=500 backend || docker compose logs --no-color --timestamps --tail=500 || true \
-                && docker compose ps \
-                && exit 1)
+          WAIT_SECONDS=60
+          ELAPSED=0
+          INTERVAL=2
+          until curl -sf http://localhost:8000/health > /dev/null 2>&1; do
+            if [ "$ELAPSED" -ge "$WAIT_SECONDS" ]; then
+              echo "Backend failed to become healthy within ${WAIT_SECONDS}s. Showing backend logs:"
+              docker compose logs --no-color --timestamps --tail=500 backend || docker compose logs --no-color --timestamps --tail=500 || true
+              docker compose ps
+              exit 1
+            fi
+            sleep "$INTERVAL"
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+          echo "Backend is healthy."
 
       - name: Verify actuator endpoint
         run: |
