@@ -22,11 +22,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Ensure license.txt exists so Specmatic doesn't crash with NoSuchFileException
-if [ ! -f "${SCRIPT_DIR}/license.txt" ]; then
-    echo "# Place your Specmatic trial license here." > "${SCRIPT_DIR}/license.txt"
-fi
-
 BACKEND_URL="http://localhost:8000"
 SPECMATIC_JAR="${HOME}/.specmatic/specmatic.jar"
 
@@ -79,17 +74,35 @@ if command -v docker-compose &>/dev/null; then
     MOCK_LLM=true RATE_LIMIT_ENABLED=false docker-compose up -d backend > /dev/null
 fi
 
-# ── Wait for Backend health & Actuator verification ──────────────────────
+# Cross-platform wait for backend health
+# Works on Linux and macOS — no timeout command needed
+WAIT_SECONDS=120
+ELAPSED=0
+INTERVAL=3
 
-echo "Waiting for Veritas backend..."
-timeout 120 bash -c \
-  'until curl -sf http://localhost:8000/health \
-   > /dev/null 2>&1; do sleep 3; done'
-echo "Backend ready."
+echo "Waiting for Veritas backend to be ready..."
+until curl -sf http://localhost:8000/health \
+  > /dev/null 2>&1; do
+  if [ "$ELAPSED" -ge "$WAIT_SECONDS" ]; then
+    echo "ERROR: Backend did not start within ${WAIT_SECONDS}s"
+    exit 1
+  fi
+  sleep "$INTERVAL"
+  ELAPSED=$((ELAPSED + INTERVAL))
+done
+echo "Backend is ready."
 
 echo "Verifying actuator endpoint..."
-curl -sf http://localhost:8000/actuator/mappings \
-  | python3 -m json.tool > /dev/null
+ELAPSED=0
+until curl -sf http://localhost:8000/actuator/mappings \
+  > /dev/null 2>&1; do
+  if [ "$ELAPSED" -ge "$WAIT_SECONDS" ]; then
+    echo "ERROR: Actuator endpoint not ready within ${WAIT_SECONDS}s"
+    exit 1
+  fi
+  sleep "$INTERVAL"
+  ELAPSED=$((ELAPSED + INTERVAL))
+done
 echo "Actuator endpoint verified."
 
 # ── Run Specmatic contract + resiliency tests via JAR ─────────────────────
@@ -106,7 +119,6 @@ if [[ "$JAVA_CMD" == *".exe" ]] && command -v wslpath &>/dev/null; then
     SPECMATIC_JAR_PATH=$(wslpath -w "$SPECMATIC_JAR")
 fi
 
-SPECMATIC_LICENSE_KEY="${SPECMATIC_LICENSE_KEY:-}" \
 "$JAVA_CMD" -jar "${SPECMATIC_JAR_PATH}" test \
     --testBaseURL="${BACKEND_URL}" \
     2>&1

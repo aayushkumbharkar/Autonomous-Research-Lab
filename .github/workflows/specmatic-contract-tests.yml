@@ -115,16 +115,6 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"topic":"User experience with the new dashboard"}' || true
 
-      - name: Create Specmatic license file from secret
-        env:
-          LICENSE_CONTENT: ${{ secrets.SPECMATIC_LICENSE_KEY }}
-        run: |
-          if [ -n "$LICENSE_CONTENT" ]; then
-            echo "$LICENSE_CONTENT" > license.txt
-          else
-            echo "# no license" > license.txt
-          fi
-
       - name: Download Specmatic JAR
         run: |
           curl -fL -o specmatic.jar \
@@ -133,8 +123,6 @@ jobs:
 
       - name: Run Specmatic contract + resiliency tests
         run: bash run_contract_tests.sh
-        env:
-          SPECMATIC_LICENSE_KEY: ${{ secrets.SPECMATIC_LICENSE_KEY }}
 
       - name: List generated Specmatic reports
         if: always()

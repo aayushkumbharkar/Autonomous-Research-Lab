@@ -19,10 +19,7 @@ Running and testing Veritas requires the following:
 - **Python 3.11 or 3.12:** Python version 3.11 or 3.12 is required if running the backend locally. Note that Python 3.13 and higher are **not supported** due to the lack of precompiled PyTorch (torch) wheel availability for newer Python versions.
 
 ## 3. Specmatic License Setup
-Specmatic requires a valid license to run contract and resiliency tests.
-1. Generate your Specmatic trial license at [https://academy.specmatic.io](https://academy.specmatic.io) using your signed-in email address.
-2. Save the license content as a file named `license.txt` in the project root directory.
-3. Note: The `license.txt` file is excluded in `.gitignore` and must never be committed to the repository.
+Specmatic runs on the built-in Open Source license. No license configuration is required.
 
 ## 4. Environment Setup
 Before running anything, create a `.env` file in the project root. A template is provided:

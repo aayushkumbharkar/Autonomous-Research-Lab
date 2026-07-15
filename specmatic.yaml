@@ -34,5 +34,3 @@ specmatic:
       enforce: true
       maxMissedOperationsInSpec: 0
       minCoveragePercentage: 100
-  license:
-    path: "{SPECMATIC_LICENSE_PATH:./license.txt}"

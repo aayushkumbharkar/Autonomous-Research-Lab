@@ -271,6 +271,10 @@ paths:
                   filename: "interview_001.txt"
                   metadata:
                     project: "UX Research Q4"
+              ingest_validation_error:
+                value:
+                  text: ""
+                  source: 123
       responses:
         '200':
           description: Ingestion result
@@ -374,6 +378,10 @@ paths:
                   top_k: 10
                   auto_evaluate: true
                   auto_improve: false
+              research_validation_error:
+                value:
+                  query: ""
+                  max_results: "five"
       responses:
         '200':
           description: Research answer with citations and confidence
@@ -646,6 +654,10 @@ paths:
               new_session:
                 value:
                   topic: "User experience with the new dashboard"
+              session_validation_error:
+                value:
+                  topic: ""
+                  duration_minutes: "long"
       responses:
         '200':
           description: Created session with opening question
