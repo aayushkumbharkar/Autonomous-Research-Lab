@@ -18,7 +18,9 @@ class Settings(BaseSettings):
     port: Optional[int] = Field(None, description="Backend port")
 
     # --- API Keys ---
-    groq_api_key: str = Field(..., description="Groq API key for LLM and Whisper")
+    # Defaults to "mock-key" so the app starts without a real key during
+    # contract testing (Specmatic stub) or local dev where no Groq calls occur.
+    groq_api_key: str = Field("mock-key", description="Groq API key for LLM and Whisper")
 
     # --- Groq Base URL (override for contract testing via Specmatic stub) ---
     groq_base_url: str = Field(
