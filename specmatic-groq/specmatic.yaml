@@ -1,0 +1,8 @@
+sources:
+  - provider: filesystem
+    repository: .
+    provides:
+      - groq_openapi.yaml
+
+stub:
+  port: 9000

@@ -1,0 +1,46 @@
+{
+  "http-request": {
+    "method": "POST",
+    "path": "/openai/v1/chat/completions",
+    "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer (string)"
+    },
+    "body": {
+      "model": "llama-3.3-70b-versatile",
+      "messages": [
+        {
+          "role": "user",
+          "content": "What is RAG?"
+        }
+      ]
+    }
+  },
+  "http-response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "id": "chatcmpl-mock-001",
+      "object": "chat.completion",
+      "created": 1234567890,
+      "model": "llama-3.3-70b-versatile",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "RAG stands for Retrieval Augmented Generation. It is a technique that combines document retrieval with language model generation to produce grounded, accurate responses."
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 10,
+        "completion_tokens": 30,
+        "total_tokens": 40
+      }
+    }
+  }
+}

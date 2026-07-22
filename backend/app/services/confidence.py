@@ -13,7 +13,7 @@ beyond just evaluation scores.
 import asyncio
 import re
 import os
-from groq import Groq
+import openai
 
 from app.config import get_settings
 from app.utils.logging import get_logger
@@ -139,8 +139,9 @@ async def generate_alternative_answer(
         return "Based on the available context, the participants expressed high satisfaction with the new dashboard's speed and layout [1]."
 
     settings = get_settings()
-    client = Groq(
-        api_key=settings.groq_api_key,
+    client = openai.OpenAI(
+        base_url=settings.groq_base_url,
+        api_key=settings.groq_api_key or "mock-key",
         timeout=settings.request_timeout,
     )
 

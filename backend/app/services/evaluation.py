@@ -15,7 +15,7 @@ import json
 import os
 from typing import Optional
 
-from groq import Groq
+import openai
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -147,7 +147,6 @@ async def _run_unified_llm_eval(
         }
 
     settings = get_settings()
-    client = Groq(api_key=settings.groq_api_key)
 
     prompt = _UNIFIED_EVAL_PROMPT_TEMPLATE.format(
         context=context[:4000],  # Truncate to avoid token limits
@@ -163,8 +162,9 @@ async def _run_unified_llm_eval(
     }
 
     try:
-        client = Groq(
-            api_key=settings.groq_api_key,
+        client = openai.OpenAI(
+            base_url=settings.groq_base_url,
+            api_key=settings.groq_api_key or "mock-key",
             timeout=settings.request_timeout,
         )
         messages = [{"role": "user", "content": prompt}]

@@ -13,7 +13,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from groq import Groq
+import openai
 
 from app.config import get_settings
 from app.utils.logging import get_logger
@@ -142,8 +142,9 @@ Respond with ONLY valid JSON:
 {{"tool": "<tool_name>", "params": {{<relevant parameters>}}, "reasoning": "<one sentence why>"}}"""
 
         try:
-            client = Groq(
-                api_key=settings.groq_api_key,
+            client = openai.OpenAI(
+                base_url=settings.groq_base_url,
+                api_key=settings.groq_api_key or "mock-key",
                 timeout=settings.request_timeout,
             )
             messages = [{"role": "user", "content": selection_prompt}]

@@ -14,7 +14,7 @@ import uuid
 import os
 from typing import Optional
 
-from groq import Groq
+import openai
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -130,8 +130,9 @@ async def research_query(
             answer_text = "Based on the available context, the participants expressed high satisfaction with the new dashboard's speed and layout [1]."
         else:
             try:
-                client = Groq(
-                    api_key=settings.groq_api_key,
+                client = openai.OpenAI(
+                    base_url=settings.groq_base_url,
+                    api_key=settings.groq_api_key or "mock-key",
                     timeout=settings.request_timeout,
                 )
                 messages = [

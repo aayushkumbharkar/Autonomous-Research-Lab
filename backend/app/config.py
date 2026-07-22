@@ -20,6 +20,16 @@ class Settings(BaseSettings):
     # --- API Keys ---
     groq_api_key: str = Field(..., description="Groq API key for LLM and Whisper")
 
+    # --- Groq Base URL (override for contract testing via Specmatic stub) ---
+    groq_base_url: str = Field(
+        "https://api.groq.com/openai/v1",
+        description=(
+            "Base URL for the Groq OpenAI-compatible API. "
+            "Set GROQ_BASE_URL=http://localhost:9000 to redirect to a "
+            "Specmatic stub server during contract testing."
+        ),
+    )
+
     # --- Model Configuration ---
     groq_model: str = Field("openai/gpt-oss-20b", description="Groq LLM model ID")
     groq_fast_model: str = Field("llama-3.1-8b-instant", description="Groq fast/cheap LLM model ID")

@@ -11,7 +11,7 @@ Conducts adaptive interviews:
 import asyncio
 from typing import Optional
 
-from groq import Groq
+import openai
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -77,8 +77,9 @@ async def start_session(
 
     # Generate opening question
     try:
-        client = Groq(
-            api_key=settings.groq_api_key,
+        client = openai.OpenAI(
+            base_url=settings.groq_base_url,
+            api_key=settings.groq_api_key or "mock-key",
             timeout=settings.request_timeout,
         )
         messages = [
@@ -197,8 +198,9 @@ async def send_message(
 
     # Generate follow-up
     try:
-        client = Groq(
-            api_key=settings.groq_api_key,
+        client = openai.OpenAI(
+            base_url=settings.groq_base_url,
+            api_key=settings.groq_api_key or "mock-key",
             timeout=settings.request_timeout,
         )
         loop = asyncio.get_event_loop()
@@ -266,8 +268,9 @@ async def end_session(
 
     # Generate summary
     try:
-        client = Groq(
-            api_key=settings.groq_api_key,
+        client = openai.OpenAI(
+            base_url=settings.groq_base_url,
+            api_key=settings.groq_api_key or "mock-key",
             timeout=settings.request_timeout,
         )
         loop = asyncio.get_event_loop()

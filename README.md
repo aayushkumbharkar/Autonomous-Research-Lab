@@ -162,3 +162,73 @@ The project is configured with a GitHub Actions workflow in [.github/workflows/s
 4. Uploads the HTML and CTRF reports as a single CI artifact named `specmatic-report`.
 
 This ensures that every push to `main` and `develop` branches undergoes rigorous API contract compliance and input resiliency validation, with accurate coverage reporting across all 8 endpoints.
+
+## 10. Mocking Groq with Specmatic
+
+Veritas uses Groq as its LLM provider. During contract testing, Specmatic acts as a
+**network-level stub** for Groq — your app makes real HTTP calls to Specmatic instead
+of the real Groq API.
+
+This demonstrates consumer-side contract testing: Veritas (the consumer) is tested
+against the OpenAI/Groq contract without needing a real Groq API key.
+
+### Architecture
+
+```
+Production:
+  Veritas FastAPI → HTTP POST → api.groq.com/openai/v1/chat/completions
+                 ← JSON response from real Groq
+
+Contract testing:
+  Veritas FastAPI → HTTP POST → Specmatic stub (port 9000)
+                 ← JSON response from Specmatic (fake but schema-valid)
+```
+
+The application does **not** change at all — only the `GROQ_BASE_URL` environment
+variable changes. This is genuine consumer-side contract testing.
+
+### Start the Groq stub server
+
+```bash
+bash run_groq_stub.sh
+```
+
+Specmatic starts on port 9000 pretending to be Groq. On first run it downloads
+`~/.specmatic/specmatic.jar` automatically. Java 17+ is required.
+
+### Run Veritas pointed at the stub
+
+```bash
+GROQ_BASE_URL=http://localhost:9000 \
+GROQ_API_KEY=mock-key \
+docker-compose up --build
+```
+
+Veritas makes real HTTP calls to Specmatic. No Groq API key needed. No real LLM
+calls made. Specmatic validates every request against the OpenAI OpenAPI spec and
+returns schema-valid fake responses.
+
+### Resiliency testing
+
+The stub includes a transient 5-second delay scenario
+(`specmatic-groq/examples/chat_completion_timeout.json`) to test how Veritas handles
+a slow Groq. Start the stub and watch how Veritas responds when the LLM takes longer
+than expected.
+
+### Files created for this feature
+
+| File | Purpose |
+|------|---------|
+| `specmatic-groq/groq_openapi.yaml` | OpenAI OpenAPI spec (source of truth for the contract) |
+| `specmatic-groq/specmatic.yaml` | Specmatic config — binds spec to stub on port 9000 |
+| `specmatic-groq/examples/chat_completion.json` | Happy-path stub example |
+| `specmatic-groq/examples/chat_completion_timeout.json` | Transient 5s delay resiliency example |
+| `run_groq_stub.sh` | One-command stub launcher |
+
+### Environment variable reference
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GROQ_BASE_URL` | `https://api.groq.com/openai/v1` | Override to `http://localhost:9000` to use Specmatic stub |
+| `GROQ_API_KEY` | *(required)* | Set to `mock-key` when using stub (no real key needed) |
+

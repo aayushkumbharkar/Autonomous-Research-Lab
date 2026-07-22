@@ -172,21 +172,15 @@ async def ingest_audio(
     Returns:
         Tuple of (Transcript, list of Chunks)
     """
-    import os
-    from groq import Groq
+    import openai
 
     settings = get_settings()
     logger.info("transcribing_audio", filename=filename, size_bytes=len(audio_bytes))
 
     try:
-        import os
-        from groq import Groq
-
-        settings = get_settings()
-        logger.info("transcribing_audio", filename=filename, size_bytes=len(audio_bytes))
-
-        client = Groq(
-            api_key=settings.groq_api_key,
+        client = openai.OpenAI(
+            base_url=settings.groq_base_url,
+            api_key=settings.groq_api_key or "mock-key",
             timeout=settings.request_timeout,
         )
         loop = asyncio.get_event_loop()

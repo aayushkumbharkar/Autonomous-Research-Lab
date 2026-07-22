@@ -2,7 +2,7 @@
 
 import asyncio
 
-from groq import Groq
+import openai
 from app.config import get_settings
 from app.tools.registry import BaseTool, ToolResult
 from app.services.retrieval import hybrid_search
@@ -53,8 +53,9 @@ class SummarizeTool(BaseTool):
             context = "\n\n".join([r.content for r in results])
 
             settings = get_settings()
-            client = Groq(
-                api_key=settings.groq_api_key,
+            client = openai.OpenAI(
+                base_url=settings.groq_base_url,
+                api_key=settings.groq_api_key or "mock-key",
                 timeout=settings.request_timeout,
             )
             messages = [

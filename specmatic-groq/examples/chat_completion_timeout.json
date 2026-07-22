@@ -1,0 +1,48 @@
+{
+  "transient": true,
+  "delay-in-seconds": 5,
+  "http-request": {
+    "method": "POST",
+    "path": "/openai/v1/chat/completions",
+    "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer (string)"
+    },
+    "body": {
+      "model": "llama-3.3-70b-versatile",
+      "messages": [
+        {
+          "role": "user",
+          "content": "(string)"
+        }
+      ]
+    }
+  },
+  "http-response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "id": "chatcmpl-mock-timeout",
+      "object": "chat.completion",
+      "created": 1234567890,
+      "model": "llama-3.3-70b-versatile",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "Delayed response"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 10,
+        "completion_tokens": 5,
+        "total_tokens": 15
+      }
+    }
+  }
+}
