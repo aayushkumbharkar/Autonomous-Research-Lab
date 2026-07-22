@@ -48,6 +48,17 @@ jobs:
           echo "=== backend logs (tail 500) ==="
           docker compose logs --no-color --timestamps --tail=500 backend || docker compose logs --no-color --timestamps --tail=500 || true
 
+      - name: Show backend startup logs
+        if: always()
+        run: |
+          echo "=== Sleeping 10s to allow container to attempt startup ==="
+          sleep 10
+          echo "=== docker logs research_lab_backend (last 100 lines) ==="
+          docker logs research_lab_backend --tail 100 2>&1 || true
+          echo "=== docker inspect (State + Health) ==="
+          docker inspect research_lab_backend \
+            --format '{{json .State}}' 2>/dev/null | python3 -m json.tool || true
+
       - name: Wait for backend to be healthy
         run: |
           WAIT_SECONDS=60
