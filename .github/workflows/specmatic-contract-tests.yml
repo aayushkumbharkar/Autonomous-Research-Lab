@@ -35,8 +35,6 @@ jobs:
           echo "RATE_LIMIT_ENABLED=false" >> .env
           # Use real secret if set; fall back to mock-key for Specmatic contract tests
           echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY || 'mock-key' }}" >> .env
-          echo "CONTRACT_TEST_MODE=true" >> .env
-          echo "MOCK_LLM=true" >> .env
 
       - name: Start Veritas backend
         run: |
