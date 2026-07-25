@@ -67,11 +67,11 @@ if [ ! -f "$SPECMATIC_JAR" ]; then
     echo "Specmatic JAR downloaded to $SPECMATIC_JAR"
 fi
 
-# ── Configure MOCK_LLM & RATE_LIMIT_ENABLED environment ────────────────────
+# ── Start Veritas backend ─────────────────────────────────────────────────
 
 if command -v docker-compose &>/dev/null; then
-    echo "Enabling MOCK_LLM mode and disabling rate limits for Veritas backend..."
-    MOCK_LLM=true RATE_LIMIT_ENABLED=false docker-compose up -d backend > /dev/null
+    echo "Starting Veritas backend..."
+    docker-compose up -d backend > /dev/null
 fi
 
 # Cross-platform wait for backend health
@@ -126,13 +126,7 @@ fi
 TEST_EXIT_CODE=${PIPESTATUS[0]:-$?}
 set -e
 
-# ── Restore MOCK_LLM & RATE_LIMIT_ENABLED state ────────────────────────────
 
-if command -v docker-compose &>/dev/null; then
-    echo "Restoring Veritas backend..."
-    docker-compose up -d backend > /dev/null
-    sleep 2
-fi
 
 # ── Result summary ────────────────────────────────────────────────────────
 

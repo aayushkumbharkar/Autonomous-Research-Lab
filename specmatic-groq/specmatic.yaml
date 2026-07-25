@@ -1,8 +1,11 @@
-sources:
-  - provider: filesystem
-    repository: .
-    provides:
-      - groq_openapi.yaml
+version: 3
 
-stub:
-  port: 9000
+specmatic:
+  sources:
+    - provider: filesystem
+      repository: .
+      provides:
+        - groq_openapi.yaml
+
+  stub:
+    port: 9000
