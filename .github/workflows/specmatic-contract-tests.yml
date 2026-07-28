@@ -46,6 +46,13 @@ jobs:
           echo "=== backend logs (tail 500) ==="
           docker compose logs --no-color --timestamps --tail=500 backend || docker compose logs --no-color --timestamps --tail=500 || true
 
+      - name: Capture groq-stub raw output
+        if: always()
+        run: |
+          sleep 5
+          echo "=== groq-stub logs ==="
+          docker logs autonomous-research-lab-groq-stub-1 2>&1 || true
+
       - name: Show groq-stub crash logs
         if: always()
         run: |

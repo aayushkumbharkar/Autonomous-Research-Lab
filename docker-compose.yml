@@ -45,7 +45,7 @@ services:
 
   groq-stub:
     image: specmatic/specmatic:latest
-    command: stub groq_openapi.yaml --port 9000
+    command: stub /usr/src/app/groq_openapi.yaml --port 9000
     working_dir: /usr/src/app
     volumes:
       - ./specmatic-groq:/usr/src/app
