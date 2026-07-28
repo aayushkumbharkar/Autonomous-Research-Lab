@@ -43,6 +43,21 @@ services:
       timeout: 10s
       retries: 15
 
+  groq-stub:
+    image: specmatic/specmatic:latest
+    command: stub groq_openapi.yaml --port 9000
+    working_dir: /usr/src/app
+    volumes:
+      - ./specmatic-groq:/usr/src/app
+    ports:
+      - "9000:9000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/_specmatic/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
   backend:
     build:
       context: .
@@ -56,8 +71,9 @@ services:
       - .env
     environment:
       - PORT=8000
-      - MOCK_LLM=${MOCK_LLM:-false}
       - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
+      - GROQ_BASE_URL=http://groq-stub:9000
+      - GROQ_API_KEY=mock-key
     restart: always
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -65,6 +81,8 @@ services:
       timeout: 5s
       retries: 10
     depends_on:
+      groq-stub:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:

@@ -67,11 +67,39 @@ if [ ! -f "$SPECMATIC_JAR" ]; then
     echo "Specmatic JAR downloaded to $SPECMATIC_JAR"
 fi
 
+# ── Start Specmatic Groq stub server ──────────────────────────────────────
+
+echo "Starting Specmatic Groq stub server..."
+cd "${SCRIPT_DIR}/specmatic-groq"
+"$JAVA_CMD" -jar "$SPECMATIC_JAR" stub groq_openapi.yaml \
+  --port 9000 &
+STUB_PID=$!
+cd "${SCRIPT_DIR}"
+
+# Wait for stub to be ready
+ELAPSED=0
+until curl -sf http://localhost:9000/_specmatic/health \
+  > /dev/null 2>&1; do
+  if [ "$ELAPSED" -ge 30 ]; then
+    echo "ERROR: Groq stub did not start within 30s"
+    kill $STUB_PID 2>/dev/null
+    exit 1
+  fi
+  sleep 2
+  ELAPSED=$((ELAPSED + 2))
+done
+echo "Groq stub is ready on port 9000."
+
+# ── Configure backend to use the stub ────────────────────────────────────
+
+export GROQ_BASE_URL=http://localhost:9000
+export GROQ_API_KEY=mock-key
+
 # ── Start Veritas backend ─────────────────────────────────────────────────
 
 if command -v docker-compose &>/dev/null; then
     echo "Starting Veritas backend..."
-    docker-compose up -d backend > /dev/null
+    docker-compose up -d > /dev/null
 fi
 
 # Cross-platform wait for backend health
@@ -85,6 +113,7 @@ until curl -sf http://localhost:8000/health \
   > /dev/null 2>&1; do
   if [ "$ELAPSED" -ge "$WAIT_SECONDS" ]; then
     echo "ERROR: Backend did not start within ${WAIT_SECONDS}s"
+    kill $STUB_PID 2>/dev/null
     exit 1
   fi
   sleep "$INTERVAL"
@@ -98,6 +127,7 @@ until curl -sf http://localhost:8000/actuator/mappings \
   > /dev/null 2>&1; do
   if [ "$ELAPSED" -ge "$WAIT_SECONDS" ]; then
     echo "ERROR: Actuator endpoint not ready within ${WAIT_SECONDS}s"
+    kill $STUB_PID 2>/dev/null
     exit 1
   fi
   sleep "$INTERVAL"
@@ -126,7 +156,11 @@ fi
 TEST_EXIT_CODE=${PIPESTATUS[0]:-$?}
 set -e
 
+# ── Stop Groq stub ────────────────────────────────────────────────────────
 
+echo "Stopping Groq stub..."
+kill $STUB_PID 2>/dev/null
+wait $STUB_PID 2>/dev/null || true
 
 # ── Result summary ────────────────────────────────────────────────────────
 

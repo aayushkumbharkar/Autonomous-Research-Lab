@@ -36,7 +36,7 @@ jobs:
           # Use real secret if set; fall back to mock-key for Specmatic contract tests
           echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY || 'mock-key' }}" >> .env
 
-      - name: Start Veritas backend
+      - name: Start all services (backend, groq-stub, postgres, redis, opensearch)
         run: |
           docker compose up -d --build
           echo "=== docker compose ps ==="
@@ -56,6 +56,12 @@ jobs:
           echo "=== docker inspect (State + Health) ==="
           docker inspect research_lab_backend \
             --format '{{json .State}}' 2>/dev/null | python3 -m json.tool || true
+
+      - name: Verify Groq stub is running
+        run: |
+          curl -sf http://localhost:9000/_specmatic/health \
+            && echo "Groq stub is healthy" \
+            || echo "WARNING: Groq stub health check failed"
 
       - name: Wait for backend to be healthy
         run: |
