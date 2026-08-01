@@ -1,14 +1,18 @@
 version: 3
-sources:
-  - provider: filesystem
-    directory: .
-    specs:
-      - groq_openapi.yaml
-runOptions:
-  groqMock:
-    openapi:
-      type: mock
-      baseUrl: http://localhost:9000
+dependencies:
+  services:
+    - service:
+        definitions:
+          - definition:
+              source:
+                filesystem:
+                  directory: .
+              specs:
+                - groq_openapi.yaml
+        runOptions:
+          openapi:
+            type: mock
+            baseUrl: http://localhost:9000
 specmatic:
   settings:
     mock:

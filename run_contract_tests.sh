@@ -90,12 +90,9 @@ fi
 # This starts the proper Specmatic mock driven by the v3 config.
 
 echo "Starting Specmatic LLM mock (specmatic-groq/specmatic.yaml)..."
-cd "${SCRIPT_DIR}/specmatic-groq"
-"$JAVA_CMD" -jar "${SPECMATIC_JAR_PATH}" virtualize \
-    --config "${SCRIPT_DIR}/specmatic-groq/specmatic.yaml" \
-    --port 9000 &
+"$JAVA_CMD" -jar "${SPECMATIC_JAR_PATH}" stub \
+    --config "${SCRIPT_DIR}/specmatic-groq/specmatic.yaml" &
 STUB_PID=$!
-cd "${SCRIPT_DIR}"
 
 # Wait for stub to be ready
 ELAPSED=0
