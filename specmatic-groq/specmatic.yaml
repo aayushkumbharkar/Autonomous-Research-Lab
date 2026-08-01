@@ -1,17 +1,14 @@
 version: 3
-systemUnderTest:
-  service:
-    definitions:
-      - definition:
-          source:
-            filesystem:
-              directory: .
-          specs:
-            - groq_openapi.yaml
-    runOptions:
-      openapi:
-        type: mock
-        port: 9000
+sources:
+  - provider: filesystem
+    directory: .
+    specs:
+      - groq_openapi.yaml
+runOptions:
+  groqMock:
+    openapi:
+      type: mock
+      baseUrl: http://localhost:9000
 specmatic:
   settings:
     mock:
