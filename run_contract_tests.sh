@@ -43,6 +43,14 @@ if [ ! -f "${SCRIPT_DIR}/specmatic.yaml" ]; then
     exit 1
 fi
 
+# ── Pre-flight: specmatic-groq/specmatic.yaml ──────────────────────────────
+
+if [ ! -f "${SCRIPT_DIR}/specmatic-groq/specmatic.yaml" ]; then
+    echo -e "${RED}Error: specmatic-groq/specmatic.yaml not found.${NC}"
+    echo "This file drives the Specmatic LLM mock."
+    exit 1
+fi
+
 # ── Pre-flight: Java ──────────────────────────────────────────────────────
 
 if ! command -v java &>/dev/null && ! command -v java.exe &>/dev/null; then
@@ -67,14 +75,24 @@ if [ ! -f "$SPECMATIC_JAR" ]; then
     echo "Specmatic JAR downloaded to $SPECMATIC_JAR"
 fi
 
-# ── Start Specmatic Groq stub server ──────────────────────────────────────
+SPECMATIC_JAR_PATH="${SPECMATIC_JAR}"
+if [[ "$JAVA_CMD" == *".exe" ]] && command -v wslpath &>/dev/null; then
+    SPECMATIC_JAR_PATH=$(wslpath -w "$SPECMATIC_JAR")
+fi
 
-echo "Starting Specmatic Groq stub server..."
-cd "${SCRIPT_DIR}/specmatic-groq"
-"$JAVA_CMD" -jar "$SPECMATIC_JAR" stub groq_openapi.yaml \
-  --port 9000 &
+# ── Start Specmatic LLM mock via specmatic-groq/specmatic.yaml ────────────
+#
+# Previously used: java -jar specmatic.jar stub groq_openapi.yaml
+# That ran in MOCK_LLM mode, bypassing the Specmatic mock server entirely,
+# causing unmatched requests during resiliency tests.
+#
+# Now uses: java -jar specmatic.jar mock --config specmatic-groq/specmatic.yaml
+# This starts the proper Specmatic mock driven by the v3 config.
+
+echo "Starting Specmatic LLM mock (specmatic-groq/specmatic.yaml)..."
+"$JAVA_CMD" -jar "${SPECMATIC_JAR_PATH}" mock \
+    --config "${SCRIPT_DIR}/specmatic-groq/specmatic.yaml" &
 STUB_PID=$!
-cd "${SCRIPT_DIR}"
 
 # Wait for stub to be ready
 ELAPSED=0
@@ -143,11 +161,6 @@ echo "(schemaResiliencyTests: all is enabled in specmatic.yaml)"
 echo ""
 
 set +e
-
-SPECMATIC_JAR_PATH="${SPECMATIC_JAR}"
-if [[ "$JAVA_CMD" == *".exe" ]] && command -v wslpath &>/dev/null; then
-    SPECMATIC_JAR_PATH=$(wslpath -w "$SPECMATIC_JAR")
-fi
 
 "$JAVA_CMD" -jar "${SPECMATIC_JAR_PATH}" test \
     --testBaseURL="${BACKEND_URL}" \

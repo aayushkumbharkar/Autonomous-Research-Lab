@@ -1,0 +1,19 @@
+version: 3
+systemUnderTest:
+  service:
+    definitions:
+      - definition:
+          source:
+            filesystem:
+              directory: .
+          specs:
+            - groq_openapi.yaml
+    runOptions:
+      openapi:
+        type: mock
+        port: 9000
+specmatic:
+  settings:
+    mock:
+      delayInMilliseconds: 0
+      generative: false
