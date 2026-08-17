@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     groq_api_key: str = Field(..., description="Groq API key for LLM and Whisper")
 
     # --- Model Configuration ---
-    groq_model: str = Field("llama-3.3-70b-versatile", description="Groq LLM model ID")
-    groq_fast_model: str = Field("llama-3.1-8b-instant", description="Groq fast/cheap LLM model ID")
+    groq_model: str = Field("llama3-70b-8192", description="Groq LLM model ID")
+    groq_fast_model: str = Field("llama3-8b-8192", description="Groq fast/cheap LLM model ID")
     whisper_model: str = Field("whisper-large-v3-turbo", description="Groq Whisper model ID")
     embedding_model: str = Field("all-MiniLM-L6-v2", description="Sentence-transformers model")
 

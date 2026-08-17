@@ -8,11 +8,12 @@ from app.utils.logging import get_logger
 
 logger = get_logger("groq_helpers")
 
+# Active, supported Groq production models
 FALLBACK_MODELS = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
+    "llama3-70b-8192",
+    "llama3-8b-8192",
     "mixtral-8x7b-32768",
-    "gemma2-9b-it",
+    "llama-3.2-3b-preview",
     "openai/gpt-oss-20b",
 ]
 
@@ -24,8 +25,8 @@ def call_groq_with_fallback(
     max_tokens: int = 2048,
 ) -> str:
     """
-    Calls Groq API chat completions with automatic fallback across models
-    to handle 429 TPD rate limits or model availability errors seamlessly.
+    Calls Groq API chat completions with automatic fallback across supported models
+    to handle 429 TPD rate limits or model decommissioned errors seamlessly.
     """
     settings = get_settings()
     client = Groq(api_key=settings.groq_api_key)
@@ -48,8 +49,9 @@ def call_groq_with_fallback(
                 return content
         except Exception as e:
             err_str = str(e)
-            logger.warning("groq_model_failed_trying_fallback", model=model_id, error=err_str[:150])
+            logger.warning("groq_model_failed_trying_next", model=model_id, error=err_str[:150])
             last_exception = e
+            # Continue to next model in candidate_models list
 
     logger.error("all_groq_fallback_models_failed", last_error=str(last_exception))
     raise last_exception if last_exception else RuntimeError("Failed to obtain Groq LLM response")
