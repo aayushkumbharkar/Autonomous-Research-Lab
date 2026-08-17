@@ -8,12 +8,8 @@ from app.utils.logging import get_logger
 
 logger = get_logger("groq_helpers")
 
-# Active, supported Groq production models
+# Active Groq model requested by user
 FALLBACK_MODELS = [
-    "llama3-70b-8192",
-    "llama3-8b-8192",
-    "mixtral-8x7b-32768",
-    "llama-3.2-3b-preview",
     "openai/gpt-oss-20b",
 ]
 
