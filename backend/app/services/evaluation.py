@@ -153,14 +153,13 @@ async def _run_unified_llm_eval(
     }
 
     try:
-        response = client.chat.completions.create(
-            model=settings.groq_fast_model,
+        from app.utils.groq_helpers import call_groq_with_fallback
+        content = call_groq_with_fallback(
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,  # Low temperature for consistent scoring
+            preferred_model=settings.groq_fast_model,
+            temperature=0.1,
             max_tokens=300,
         )
-
-        content = response.choices[0].message.content or ""
 
         # Parse JSON response
         json_match = re.search(r'\{.*\}', content, re.DOTALL)

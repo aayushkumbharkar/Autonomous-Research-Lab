@@ -121,18 +121,16 @@ async def research_query(
     # 3. Generate answer
     context_prompt = _build_context_prompt(context_chunks)
 
-    client = Groq(api_key=settings.groq_api_key)
-    response = client.chat.completions.create(
-        model=settings.groq_model,
+    from app.utils.groq_helpers import call_groq_with_fallback
+    answer_text = call_groq_with_fallback(
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": f"Context Chunks:\n{context_prompt}\n\nResearch Question: {query_text}"},
         ],
+        preferred_model=settings.groq_model,
         temperature=0.3,
-        max_tokens=4096,
+        max_tokens=2048,
     )
-
-    answer_text = response.choices[0].message.content or ""
     reasoning_trace = f"Retrieved {len(context_chunks)} chunks via hybrid search. " \
                       f"Search metadata: {search_metadata}"
 
