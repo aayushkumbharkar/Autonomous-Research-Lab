@@ -59,6 +59,10 @@ async def lifespan(app: FastAPI):
     # Build BM25 index from existing documents
     init_bm25()
 
+    # Auto-seed initial transcripts if database is empty on fresh container startup
+    from app.services.seed import seed_database_if_empty
+    await seed_database_if_empty()
+
     # Register MCP tools
     registry = get_registry()
     registry.register(SearchTool())
