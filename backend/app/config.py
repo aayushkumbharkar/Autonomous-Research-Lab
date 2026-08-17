@@ -31,8 +31,8 @@ class Settings(BaseSettings):
     )
 
     # --- Evaluation ---
-    eval_threshold: float = Field(0.7, ge=0.0, le=1.0, description="Minimum acceptable eval score")
-    max_retry_attempts: int = Field(3, ge=1, le=10, description="Max feedback loop retries")
+    eval_threshold: float = Field(0.5, ge=0.0, le=1.0, description="Minimum acceptable eval score")
+    max_retry_attempts: int = Field(1, ge=1, le=10, description="Max feedback loop retries")
 
     # --- Performance ---
     embedding_cache_size: int = Field(1024, description="LRU cache size for embeddings")

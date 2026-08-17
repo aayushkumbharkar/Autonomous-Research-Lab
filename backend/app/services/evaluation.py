@@ -140,9 +140,9 @@ async def _run_unified_llm_eval(
     client = Groq(api_key=settings.groq_api_key)
 
     prompt = _UNIFIED_EVAL_PROMPT_TEMPLATE.format(
-        context=context[:4000],  # Truncate to avoid token limits
+        context=context[:1500],  # Truncate context for fast evaluation
         query=query,
-        answer=answer,
+        answer=answer[:1000],
     )
 
     default_results = {
@@ -157,7 +157,7 @@ async def _run_unified_llm_eval(
             model=settings.groq_fast_model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,  # Low temperature for consistent scoring
-            max_tokens=1000,
+            max_tokens=300,
         )
 
         content = response.choices[0].message.content or ""
