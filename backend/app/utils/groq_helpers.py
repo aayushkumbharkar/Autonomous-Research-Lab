@@ -8,12 +8,14 @@ from app.utils.logging import get_logger
 
 logger = get_logger("groq_helpers")
 
-# Primary: openai/gpt-oss-20b. Fallbacks kick in when 429 TPD daily quota is hit.
+# Active, supported Groq production models (no decommissioned models)
 FALLBACK_MODELS = [
     "openai/gpt-oss-20b",
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
     "llama3-70b-8192",
     "llama3-8b-8192",
-    "mixtral-8x7b-32768",
+    "llama-3.2-3b-preview",
 ]
 
 
@@ -25,7 +27,7 @@ def call_groq_with_fallback(
 ) -> str:
     """
     Calls Groq API chat completions trying preferred_model first (openai/gpt-oss-20b),
-    falling back seamlessly to secondary models if a 429 TPD rate limit is encountered.
+    falling back seamlessly to secondary active models if a 429 TPD rate limit is encountered.
     """
     settings = get_settings()
     client = Groq(api_key=settings.groq_api_key)
