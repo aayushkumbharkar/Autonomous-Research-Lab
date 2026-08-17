@@ -23,6 +23,14 @@ from app.services.retrieval import rebuild_bm25
 router = APIRouter(prefix="/api/ingest", tags=["ingestion"])
 
 
+@router.post("/seed")
+async def seed_endpoint():
+    """Trigger seeding of default transcripts if database is empty."""
+    from app.services.seed import seed_database_if_empty
+    result = await seed_database_if_empty(force=True)
+    return result
+
+
 @router.post("/text", response_model=IngestResponse)
 async def ingest_text_endpoint(
     request: IngestTextRequest,
